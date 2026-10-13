@@ -1,0 +1,28 @@
+<resources>
+    <!-- Clean Minimalist Dark Theme Colors -->
+    <color name="glass_dark_bg">#121214</color>
+    <color name="dark_bg">#121214</color>
+    <color name="dark_surface">#18181B</color>
+    <color name="dark_surface_elevated">#202024</color>
+    <color name="dark_border">#27272A</color>
+    <color name="dark_border_subtle">#1F1F23</color>
+
+    <!-- Typography -->
+    <color name="text_primary">#F4F4F5</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="text_muted">#71717A</color>
+    <color name="text_shadow">#00000000</color>
+
+    <!-- Clean Accents -->
+    <color name="accent_blue">#3B82F6</color>
+    <color name="accent_cyan">#06B6D4</color>
+    <color name="accent_green">#22C55E</color>
+    <color name="accent_amber">#F59E0B</color>
+    <color name="accent_red">#EF4444</color>
+
+    <!-- Checkbox States -->
+    <color name="checkbox_unchecked_border">#71717A</color>
+    <color name="checkbox_unchecked_bg">#00000000</color>
+    <color name="checkbox_checked_bg">#3B82F6</color>
+    <color name="checkbox_checked_border">#3B82F6</color>
+</resources>

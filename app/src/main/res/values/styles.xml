@@ -1,0 +1,42 @@
+<resources>
+    <!-- Base Application Theme -->
+    <style name="Theme.LiquidGlass" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/dark_bg</item>
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="colorSecondary">@color/accent_cyan</item>
+        <item name="colorSurface">@color/dark_surface</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:statusBarColor">@color/dark_bg</item>
+        <item name="android:navigationBarColor">@color/dark_bg</item>
+    </style>
+
+    <!-- Fullscreen Scrim Modal Theme for Task Dialog -->
+    <style name="Theme.LiquidGlass.Dialog" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:statusBarColor">#99000000</item>
+        <item name="android:navigationBarColor">#99000000</item>
+        <item name="colorPrimary">@color/accent_blue</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+    </style>
+
+    <!-- Widget Text Styles -->
+    <style name="WidgetTextPrimary">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_size_body</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+
+    <style name="WidgetTextCompleted" parent="WidgetTextPrimary">
+        <item name="android:textColor">@color/text_muted</item>
+    </style>
+
+    <style name="WidgetTextHeader">
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">@dimen/text_size_header</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+</resources>

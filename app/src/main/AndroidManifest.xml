@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher_glass"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_launcher_glass"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.LiquidGlass">
+
+        <!-- App Widget Configuration & Settings Activity -->
+        <activity
+            android:name=".ui.WidgetConfigActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.LiquidGlass">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <!-- Quick Add Dialog Activity -->
+        <activity
+            android:name=".ui.QuickAddActivity"
+            android:exported="false"
+            android:theme="@style/Theme.LiquidGlass.Dialog"
+            android:windowSoftInputMode="stateVisible|adjustResize" />
+
+        <!-- App Widget Provider -->
+        <receiver
+            android:name=".LiquidTodoWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/liquid_todo_widget_info" />
+        </receiver>
+
+        <!-- Widget Interactive Action Receiver -->
+        <receiver
+            android:name=".WidgetActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.glassvault.widget.ACTION_TOGGLE_TASK" />
+                <action android:name="com.glassvault.widget.ACTION_MANUAL_SYNC" />
+                <action android:name="com.glassvault.widget.ACTION_REFRESH" />
+            </intent-filter>
+        </receiver>
+
+        <!-- RemoteViews Service for Scrollable Task List -->
+        <service
+            android:name=".LiquidTodoWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+    </application>
+
+</manifest>

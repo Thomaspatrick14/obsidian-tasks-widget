@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_liquid_glass_container"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <!-- Clean Dark Header -->
+    <LinearLayout
+        android:id="@+id/widget_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
+
+        <!-- Vault / Note Title -->
+        <TextView
+            android:id="@+id/tv_widget_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="1"
+            android:text="Obsidian Tasks"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <!-- Count Progress Badge -->
+        <TextView
+            android:id="@+id/tv_widget_count"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_liquid_glass_pill"
+            android:fontFamily="sans-serif"
+            android:paddingStart="8dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="3dp"
+            android:text="0"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp" />
+
+        <!-- Spacer -->
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Quick Add Button -->
+        <ImageButton
+            android:id="@+id/btn_widget_add"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_liquid_glass_pill"
+            android:contentDescription="Add Task"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_add" />
+
+        <!-- Cloud Sync Button -->
+        <ImageButton
+            android:id="@+id/btn_widget_sync"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_liquid_glass_pill"
+            android:contentDescription="Sync with Nextcloud"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_sync" />
+
+        <!-- Settings Button -->
+        <ImageButton
+            android:id="@+id/btn_widget_settings"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/bg_liquid_glass_pill"
+            android:contentDescription="Configure Widget"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_settings" />
+    </LinearLayout>
+
+    <!-- Task List -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ListView
+            android:id="@+id/widget_list_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:cacheColorHint="@android:color/transparent"
+            android:divider="@android:color/transparent"
+            android:dividerHeight="4dp"
+            android:fadingEdge="none"
+            android:footerDividersEnabled="false"
+            android:headerDividersEnabled="false"
+            android:overScrollMode="never"
+            android:scrollbars="none" />
+
+        <!-- Empty State -->
+        <LinearLayout
+            android:id="@+id/widget_empty_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_empty_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="No tasks pending"
+                android:textColor="@color/text_muted"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_empty_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:text="Tap + to add one"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </FrameLayout>
+
+</LinearLayout>

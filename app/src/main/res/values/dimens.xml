@@ -1,0 +1,24 @@
+<resources>
+    <!-- Widget Dimensions -->
+    <dimen name="widget_margin">8dp</dimen>
+    <dimen name="widget_corner_radius">28dp</dimen>
+    <dimen name="widget_card_corner_radius">16dp</dimen>
+    <dimen name="widget_pill_corner_radius">50dp</dimen>
+
+    <!-- Padding -->
+    <dimen name="padding_xs">4dp</dimen>
+    <dimen name="padding_small">8dp</dimen>
+    <dimen name="padding_medium">12dp</dimen>
+    <dimen name="padding_large">16dp</dimen>
+    <dimen name="padding_xl">24dp</dimen>
+
+    <!-- Text Sizes -->
+    <dimen name="text_size_header">15sp</dimen>
+    <dimen name="text_size_body">14sp</dimen>
+    <dimen name="text_size_caption">11sp</dimen>
+
+    <!-- Component Sizes -->
+    <dimen name="checkbox_size">22dp</dimen>
+    <dimen name="action_icon_size">20dp</dimen>
+    <dimen name="glass_border_width">1.5dp</dimen>
+</resources>

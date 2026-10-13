@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Normal Task Item Row -->
+    <LinearLayout
+        android:id="@+id/task_item_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_liquid_glass_card"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp">
+
+        <!-- Clean Checkbox -->
+        <ImageView
+            android:id="@+id/iv_checkbox"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="Toggle Task"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_checkbox_unchecked" />
+
+        <!-- Task Title -->
+        <TextView
+            android:id="@+id/tv_task_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif"
+            android:maxLines="2"
+            android:text="Task Title"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+
+        <!-- Optional Tag -->
+        <TextView
+            android:id="@+id/tv_task_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_liquid_glass_pill"
+            android:fontFamily="sans-serif-medium"
+            android:paddingStart="6dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="2dp"
+            android:text="#tag"
+            android:textColor="@color/accent_blue"
+            android:textSize="10sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- Collapsible "Done" Subtitle / Header Row -->
+    <LinearLayout
+        android:id="@+id/done_header_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="2dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="6dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/iv_done_chevron"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="Expand Done"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_chevron_right" />
+
+        <TextView
+            android:id="@+id/tv_done_header_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="Done (0)"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
+
+        <FrameLayout
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:id="@+id/tv_done_action_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif"
+            android:text="tap to view"
+            android:textColor="@color/text_muted"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+</LinearLayout>
