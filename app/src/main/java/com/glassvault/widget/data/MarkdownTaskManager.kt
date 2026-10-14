@@ -151,6 +151,37 @@ object MarkdownTaskManager {
     }
 
     /**
+     * Determines the line index where a newly checked (completed) task should be inserted.
+     * Places it at the VERY TOP of the checked list (right below the DONE / Completed header).
+     */
+    fun findCheckedInsertionIndex(lines: List<String>): Int {
+        if (lines.isEmpty()) return 0
+
+        // 1. Look for DONE / Completed header
+        val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
+        if (doneHeaderIndex != -1) {
+            var insertAt = doneHeaderIndex + 1
+            // If there is an empty line right after DONE, put after the empty line
+            if (insertAt < lines.size && lines[insertAt].isBlank()) {
+                insertAt++
+            }
+            return insertAt
+        }
+
+        // 2. If no DONE header, look for the first completed task
+        val firstCompletedIndex = lines.indexOfFirst { line ->
+            val match = TASK_PATTERN.matchEntire(line)
+            match != null && match.groupValues[3].equals("x", ignoreCase = true)
+        }
+        if (firstCompletedIndex != -1) {
+            return firstCompletedIndex
+        }
+
+        // 3. Otherwise append to the end of the document
+        return lines.size
+    }
+
+    /**
      * Reads and parses all checkbox tasks from the given document Uri.
      */
     fun loadTasks(context: Context, uri: Uri, includeCompleted: Boolean = true): List<TaskItem> {
@@ -203,6 +234,8 @@ object MarkdownTaskManager {
 
     /**
      * Toggles the checkbox on the specified line number in the markdown file.
+     * When checked: moves the task to the top of the checked list (right below DONE).
+     * When unchecked: moves the task to the top of the active tasks (under To do).
      */
     @Synchronized
     fun toggleTask(context: Context, uri: Uri, lineIndex: Int): Boolean {
@@ -227,10 +260,52 @@ object MarkdownTaskManager {
             val statusChar = match.groupValues[3]
             val content = match.groupValues[4]
 
-            val newStatus = if (statusChar.equals("x", ignoreCase = true)) " " else "x"
+            val isCurrentlyCompleted = statusChar.equals("x", ignoreCase = true)
+            val newStatus = if (isCurrentlyCompleted) " " else "x"
             val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
             val updatedLine = "$indent$bulletPrefix[$newStatus] $content"
-            lines[lineIndex] = updatedLine
+
+            // Gather task line and any indented sub-notes
+            val taskBlock = mutableListOf<String>()
+            taskBlock.add(updatedLine)
+            var subScan = lineIndex + 1
+            while (subScan < lines.size && isIndentedSubLine(lines[subScan])) {
+                taskBlock.add(lines[subScan])
+                subScan++
+            }
+
+            // Remove the old task block
+            repeat(taskBlock.size) {
+                lines.removeAt(lineIndex)
+            }
+
+            // Clean up accidental duplicate blank lines caused by removal
+            if (lineIndex > 0 && lineIndex < lines.size && lines[lineIndex - 1].isBlank() && lines[lineIndex].isBlank()) {
+                lines.removeAt(lineIndex)
+            }
+
+            if (!isCurrentlyCompleted) {
+                // Task was checked: move to the top of the checked list (right below DONE)
+                val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
+                if (doneHeaderIndex != -1 && doneHeaderIndex == lines.size - 1) {
+                    // DONE is the very last line; add a blank line after it before inserting
+                    lines.add("")
+                    lines.addAll(taskBlock)
+                } else {
+                    val targetIndex = findCheckedInsertionIndex(lines)
+                    lines.addAll(targetIndex, taskBlock)
+                }
+            } else {
+                // Task was unchecked: move to the top of the active tasks (under To do)
+                val targetIndex = findInsertionIndex(lines)
+                lines.addAll(targetIndex, taskBlock)
+
+                // If placed directly against a DONE header without spacing, insert blank line
+                val afterIndex = targetIndex + taskBlock.size
+                if (afterIndex < lines.size && isDoneHeader(lines[afterIndex])) {
+                    lines.add(afterIndex, "")
+                }
+            }
 
             return writeLines(context, uri, lines)
         } catch (e: Exception) {

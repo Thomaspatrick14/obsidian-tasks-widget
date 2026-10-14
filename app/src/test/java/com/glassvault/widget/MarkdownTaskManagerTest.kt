@@ -198,4 +198,57 @@ class MarkdownTaskManagerTest {
         assertEquals("+", MarkdownTaskManager.detectBulletStyle(listOf("+ [ ] Buy milk")))
         assertEquals("-", MarkdownTaskManager.detectBulletStyle(emptyList()))
     }
+
+    @Test
+    fun testFindCheckedInsertionIndexWithBlankLineAfterDone() {
+        val lines = listOf(
+            "To do",
+            "",
+            "- [ ] Bread",
+            "",
+            "DONE",
+            "",
+            "- [x] Older completed 1",
+            "- [x] Older completed 2"
+        )
+
+        val insertIndex = MarkdownTaskManager.findCheckedInsertionIndex(lines)
+        // Line 4 is DONE, line 5 is blank. Target is line 6 (above "Older completed 1")
+        assertEquals(6, insertIndex)
+
+        val updated = lines.toMutableList()
+        updated.add(insertIndex, "- [x] Just completed")
+
+        assertEquals("DONE", updated[4])
+        assertEquals("", updated[5])
+        assertEquals("- [x] Just completed", updated[6])
+        assertEquals("- [x] Older completed 1", updated[7])
+    }
+
+    @Test
+    fun testFindCheckedInsertionIndexWithoutBlankLineAfterDone() {
+        val lines = listOf(
+            "To do",
+            "- [ ] Bread",
+            "DONE",
+            "- [x] Older completed 1"
+        )
+
+        val insertIndex = MarkdownTaskManager.findCheckedInsertionIndex(lines)
+        // Line 2 is DONE. Target is line 3 (directly below DONE, above Older completed 1)
+        assertEquals(3, insertIndex)
+    }
+
+    @Test
+    fun testFindCheckedInsertionIndexWithoutDoneHeader() {
+        val lines = listOf(
+            "- [ ] Task 1",
+            "- [x] Completed 1",
+            "- [x] Completed 2"
+        )
+
+        val insertIndex = MarkdownTaskManager.findCheckedInsertionIndex(lines)
+        // Inserts before first completed item at index 1
+        assertEquals(1, insertIndex)
+    }
 }
