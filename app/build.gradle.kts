@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.glassvault.widget"
+    namespace = "com.thomaspatrick.obsidiantasks"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.glassvault.widget"
+        applicationId = "com.thomaspatrick.obsidiantasks"
         minSdk = 26
         targetSdk = 34
         versionCode = 2

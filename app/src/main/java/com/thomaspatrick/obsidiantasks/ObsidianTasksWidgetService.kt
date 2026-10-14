@@ -1,4 +1,4 @@
-package com.glassvault.widget
+package com.thomaspatrick.obsidiantasks
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
@@ -11,13 +11,13 @@ import android.text.style.StrikethroughSpan
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
-import com.glassvault.widget.data.TaskItem
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.TaskItem
 
-class LiquidTodoWidgetService : RemoteViewsService() {
+class ObsidianTasksWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory {
-        return LiquidTodoViewsFactory(applicationContext, intent)
+        return ObsidianTasksViewsFactory(applicationContext, intent)
     }
 }
 
@@ -26,7 +26,7 @@ sealed class WidgetItem {
     data class DoneHeaderRow(val count: Int, val isExpanded: Boolean) : WidgetItem()
 }
 
-class LiquidTodoViewsFactory(
+class ObsidianTasksViewsFactory(
     private val context: Context,
     private val intent: Intent
 ) : RemoteViewsService.RemoteViewsFactory {
@@ -132,18 +132,18 @@ class LiquidTodoViewsFactory(
 
                 // 1. Clicking CHECKBOX toggles task
                 val toggleIntent = Intent().apply {
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_CLICK_ACTION, LiquidTodoWidgetProvider.CLICK_ACTION_TOGGLE)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_TOGGLE)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
                 }
                 views.setOnClickFillInIntent(R.id.iv_checkbox, toggleIntent)
 
                 // 2. Clicking TEXT / ROW opens Task Edit Dialog
                 val editIntent = Intent().apply {
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_CLICK_ACTION, LiquidTodoWidgetProvider.CLICK_ACTION_EDIT)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_TASK_TEXT, task.title)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_EDIT)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT, task.title)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
                 }
                 views.setOnClickFillInIntent(R.id.task_item_container, editIntent)
                 views.setOnClickFillInIntent(R.id.tv_task_title, editIntent)
@@ -165,9 +165,9 @@ class LiquidTodoViewsFactory(
 
                 // Fill-in Intent for expanding/collapsing the "Done" section
                 val fillInIntent = Intent().apply {
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_CLICK_ACTION, LiquidTodoWidgetProvider.CLICK_ACTION_TOGGLE_DONE)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_TOGGLE_DONE, true)
-                    putExtra(LiquidTodoWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_TOGGLE_DONE)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_TOGGLE_DONE, true)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
                 }
                 views.setOnClickFillInIntent(R.id.done_header_container, fillInIntent)
             }

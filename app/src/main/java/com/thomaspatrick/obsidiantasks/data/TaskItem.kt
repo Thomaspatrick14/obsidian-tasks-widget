@@ -1,4 +1,4 @@
-package com.glassvault.widget.data
+package com.thomaspatrick.obsidiantasks.data
 
 /**
  * Represents a parsed to-do item from an Obsidian markdown file.

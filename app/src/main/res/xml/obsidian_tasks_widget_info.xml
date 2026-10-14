@@ -6,7 +6,7 @@
     android:targetCellHeight="3"
     android:updatePeriodMillis="1800000"
     android:initialLayout="@layout/widget_layout"
-    android:configure="com.glassvault.widget.ui.WidgetConfigActivity"
+    android:configure="com.thomaspatrick.obsidiantasks.ui.WidgetConfigActivity"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:widgetFeatures="reconfigurable"

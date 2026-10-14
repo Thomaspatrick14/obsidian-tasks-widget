@@ -1,4 +1,4 @@
-package com.glassvault.widget.sync
+package com.thomaspatrick.obsidiantasks.sync
 
 import android.util.Log
 import okhttp3.Credentials

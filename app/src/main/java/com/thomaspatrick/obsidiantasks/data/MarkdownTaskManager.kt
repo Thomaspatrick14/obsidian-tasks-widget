@@ -1,4 +1,4 @@
-package com.glassvault.widget.data
+package com.thomaspatrick.obsidiantasks.data
 
 import android.content.Context
 import android.net.Uri

@@ -1,4 +1,4 @@
-package com.glassvault.widget
+package com.thomaspatrick.obsidiantasks
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -8,12 +8,12 @@ import android.content.Intent
 import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
-import com.glassvault.widget.ui.QuickAddActivity
-import com.glassvault.widget.ui.WidgetConfigActivity
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.ui.QuickAddActivity
+import com.thomaspatrick.obsidiantasks.ui.WidgetConfigActivity
 
-class LiquidTodoWidgetProvider : AppWidgetProvider() {
+class ObsidianTasksWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(
         context: Context,
@@ -31,9 +31,9 @@ class LiquidTodoWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_TOGGLE_TASK = "com.glassvault.widget.ACTION_TOGGLE_TASK"
-        const val ACTION_MANUAL_SYNC = "com.glassvault.widget.ACTION_MANUAL_SYNC"
-        const val ACTION_REFRESH = "com.glassvault.widget.ACTION_REFRESH"
+        const val ACTION_TOGGLE_TASK = "com.thomaspatrick.obsidiantasks.ACTION_TOGGLE_TASK"
+        const val ACTION_MANUAL_SYNC = "com.thomaspatrick.obsidiantasks.ACTION_MANUAL_SYNC"
+        const val ACTION_REFRESH = "com.thomaspatrick.obsidiantasks.ACTION_REFRESH"
 
         const val EXTRA_LINE_INDEX = "extra_line_index"
         const val EXTRA_WIDGET_ID = "extra_widget_id"
@@ -71,7 +71,7 @@ class LiquidTodoWidgetProvider : AppWidgetProvider() {
             }
 
             // Bind RemoteViewsService for the scrollable list
-            val serviceIntent = Intent(context, LiquidTodoWidgetService::class.java).apply {
+            val serviceIntent = Intent(context, ObsidianTasksWidgetService::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
                 data = Uri.fromParts("content", appWidgetId.toString(), null)
             }

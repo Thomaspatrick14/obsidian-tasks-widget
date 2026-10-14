@@ -1,4 +1,4 @@
-package com.glassvault.widget
+package com.thomaspatrick.obsidiantasks
 
 import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
@@ -15,9 +15,10 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
-import com.glassvault.widget.sync.NextcloudWebDavSyncWorker
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.sync.NextcloudWebDavSyncWorker
+import com.thomaspatrick.obsidiantasks.ui.QuickAddActivity
 
 class WidgetActionReceiver : BroadcastReceiver() {
 
@@ -26,18 +27,18 @@ class WidgetActionReceiver : BroadcastReceiver() {
         val uriString = prefs.fileUriString
 
         when (intent.action) {
-            LiquidTodoWidgetProvider.ACTION_TOGGLE_TASK -> {
-                val clickAction = intent.getStringExtra(LiquidTodoWidgetProvider.EXTRA_CLICK_ACTION)
-                    ?: LiquidTodoWidgetProvider.CLICK_ACTION_TOGGLE
-                val isToggleDone = intent.getBooleanExtra(LiquidTodoWidgetProvider.EXTRA_TOGGLE_DONE, false)
+            ObsidianTasksWidgetProvider.ACTION_TOGGLE_TASK -> {
+                val clickAction = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION)
+                    ?: ObsidianTasksWidgetProvider.CLICK_ACTION_TOGGLE
+                val isToggleDone = intent.getBooleanExtra(ObsidianTasksWidgetProvider.EXTRA_TOGGLE_DONE, false)
                 val widgetId = intent.getIntExtra(
-                    LiquidTodoWidgetProvider.EXTRA_WIDGET_ID,
+                    ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID,
                     AppWidgetManager.INVALID_APPWIDGET_ID
                 )
-                val lineIndex = intent.getIntExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, -1)
+                val lineIndex = intent.getIntExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, -1)
 
                 // 1. Tapping "Done" header collapses / expands completed tasks
-                if (clickAction == LiquidTodoWidgetProvider.CLICK_ACTION_TOGGLE_DONE || isToggleDone) {
+                if (clickAction == ObsidianTasksWidgetProvider.CLICK_ACTION_TOGGLE_DONE || isToggleDone) {
                     prefs.isDoneExpanded = !prefs.isDoneExpanded
                     triggerHapticFeedback(context)
 
@@ -45,7 +46,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                     if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                         appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list_view)
                     } else {
-                        val componentName = ComponentName(context, LiquidTodoWidgetProvider::class.java)
+                        val componentName = ComponentName(context, ObsidianTasksWidgetProvider::class.java)
                         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
                         appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
                     }
@@ -53,13 +54,13 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 }
 
                 // 2. Tapping text opens Task Edit Dialog
-                if (clickAction == LiquidTodoWidgetProvider.CLICK_ACTION_EDIT) {
-                    val taskText = intent.getStringExtra(LiquidTodoWidgetProvider.EXTRA_TASK_TEXT) ?: ""
-                    val editIntent = Intent(context, com.glassvault.widget.ui.QuickAddActivity::class.java).apply {
-                        putExtra(com.glassvault.widget.ui.QuickAddActivity.EXTRA_MODE, com.glassvault.widget.ui.QuickAddActivity.MODE_EDIT)
-                        putExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, lineIndex)
-                        putExtra(LiquidTodoWidgetProvider.EXTRA_TASK_TEXT, taskText)
-                        putExtra(LiquidTodoWidgetProvider.EXTRA_WIDGET_ID, widgetId)
+                if (clickAction == ObsidianTasksWidgetProvider.CLICK_ACTION_EDIT) {
+                    val taskText = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT) ?: ""
+                    val editIntent = Intent(context, QuickAddActivity::class.java).apply {
+                        putExtra(QuickAddActivity.EXTRA_MODE, QuickAddActivity.MODE_EDIT)
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, lineIndex)
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT, taskText)
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, widgetId)
                         addFlags(
                             Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -83,13 +84,13 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         val appWidgetManager = AppWidgetManager.getInstance(context)
                         if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
                             appWidgetManager.notifyAppWidgetViewDataChanged(widgetId, R.id.widget_list_view)
-                            LiquidTodoWidgetProvider.updateAppWidget(context, appWidgetManager, widgetId)
+                            ObsidianTasksWidgetProvider.updateAppWidget(context, appWidgetManager, widgetId)
                         } else {
-                            val componentName = ComponentName(context, LiquidTodoWidgetProvider::class.java)
+                            val componentName = ComponentName(context, ObsidianTasksWidgetProvider::class.java)
                             val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
                             appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
                             for (id in widgetIds) {
-                                LiquidTodoWidgetProvider.updateAppWidget(context, appWidgetManager, id)
+                                ObsidianTasksWidgetProvider.updateAppWidget(context, appWidgetManager, id)
                             }
                         }
 
@@ -109,7 +110,7 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 }
             }
 
-            LiquidTodoWidgetProvider.ACTION_MANUAL_SYNC -> {
+            ObsidianTasksWidgetProvider.ACTION_MANUAL_SYNC -> {
                 if (prefs.isCloudSyncEnabled) {
                     val syncRequest = OneTimeWorkRequestBuilder<NextcloudWebDavSyncWorker>()
                         .setInputData(workDataOf(NextcloudWebDavSyncWorker.KEY_SYNC_MODE to NextcloudWebDavSyncWorker.MODE_DOWNLOAD))
@@ -123,13 +124,13 @@ class WidgetActionReceiver : BroadcastReceiver() {
                 }
             }
 
-            LiquidTodoWidgetProvider.ACTION_REFRESH -> {
+            ObsidianTasksWidgetProvider.ACTION_REFRESH -> {
                 val appWidgetManager = AppWidgetManager.getInstance(context)
-                val componentName = ComponentName(context, LiquidTodoWidgetProvider::class.java)
+                val componentName = ComponentName(context, ObsidianTasksWidgetProvider::class.java)
                 val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
                 appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
                 for (id in widgetIds) {
-                    LiquidTodoWidgetProvider.updateAppWidget(context, appWidgetManager, id)
+                    ObsidianTasksWidgetProvider.updateAppWidget(context, appWidgetManager, id)
                 }
             }
         }

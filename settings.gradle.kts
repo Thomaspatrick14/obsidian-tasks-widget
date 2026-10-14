@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LiquidTodoWidget"
+rootProject.name = "obsidian-tasks-widget"
 include(":app")

@@ -1,4 +1,4 @@
-package com.glassvault.widget.ui
+package com.thomaspatrick.obsidiantasks.ui
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
@@ -17,13 +17,13 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.glassvault.widget.LiquidTodoWidgetProvider
-import com.glassvault.widget.R
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
-import com.glassvault.widget.databinding.ActivityConfigBinding
-import com.glassvault.widget.sync.NextcloudWebDavSyncWorker
-import com.glassvault.widget.sync.WebDavClient
+import com.thomaspatrick.obsidiantasks.ObsidianTasksWidgetProvider
+import com.thomaspatrick.obsidiantasks.R
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.databinding.ActivityConfigBinding
+import com.thomaspatrick.obsidiantasks.sync.NextcloudWebDavSyncWorker
+import com.thomaspatrick.obsidiantasks.sync.WebDavClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -193,17 +193,17 @@ class WidgetConfigActivity : AppCompatActivity() {
 
         // Notify AppWidgetManager to update widgets
         val appWidgetManager = AppWidgetManager.getInstance(this)
-        val componentName = ComponentName(this, LiquidTodoWidgetProvider::class.java)
+        val componentName = ComponentName(this, ObsidianTasksWidgetProvider::class.java)
         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         if (widgetIds.isNotEmpty()) {
             appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
             for (id in widgetIds) {
-                LiquidTodoWidgetProvider.updateAppWidget(this, appWidgetManager, id)
+                ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, id)
             }
         }
 
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            LiquidTodoWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
+            ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list_view)
         }
 

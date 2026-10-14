@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/glass_dark_bg"
+    android:background="@color/dark_bg"
     android:fillViewport="true">
 
     <LinearLayout
@@ -23,7 +23,7 @@
             <ImageView
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_launcher_glass" />
+                android:src="@drawable/ic_launcher_app" />
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -55,7 +55,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:background="@drawable/bg_liquid_glass_card"
+            android:background="@drawable/bg_task_card"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -89,7 +89,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="@drawable/bg_liquid_glass_pill"
+                android:background="@drawable/bg_widget_pill"
                 android:ellipsize="middle"
                 android:maxLines="1"
                 android:paddingStart="12dp"
@@ -106,7 +106,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:background="@drawable/bg_liquid_glass_card"
+            android:background="@drawable/bg_task_card"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -239,7 +239,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="24dp"
-            android:background="@drawable/bg_liquid_glass_card"
+            android:background="@drawable/bg_task_card"
             android:orientation="vertical"
             android:padding="16dp">
 
@@ -284,6 +284,18 @@
             android:text="@string/btn_save_widget"
             android:textColor="@color/text_primary"
             android:textSize="15sp" />
+
+        <!-- Author Credit -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="12dp"
+            android:gravity="center"
+            android:fontFamily="sans-serif"
+            android:text="Created by @Thomaspatrick14"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp" />
 
     </LinearLayout>
 </ScrollView>

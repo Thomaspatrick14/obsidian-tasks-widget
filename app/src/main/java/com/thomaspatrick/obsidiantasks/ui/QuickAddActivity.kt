@@ -1,4 +1,4 @@
-package com.glassvault.widget.ui
+package com.thomaspatrick.obsidiantasks.ui
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -13,12 +13,12 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.glassvault.widget.LiquidTodoWidgetProvider
-import com.glassvault.widget.R
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
-import com.glassvault.widget.databinding.ActivityQuickAddBinding
-import com.glassvault.widget.sync.NextcloudWebDavSyncWorker
+import com.thomaspatrick.obsidiantasks.ObsidianTasksWidgetProvider
+import com.thomaspatrick.obsidiantasks.R
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.databinding.ActivityQuickAddBinding
+import com.thomaspatrick.obsidiantasks.sync.NextcloudWebDavSyncWorker
 
 class QuickAddActivity : AppCompatActivity() {
 
@@ -36,8 +36,8 @@ class QuickAddActivity : AppCompatActivity() {
         prefs = AppPreferences(this)
 
         mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_ADD
-        targetLineIndex = intent.getIntExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, -1)
-        val initialText = intent.getStringExtra(LiquidTodoWidgetProvider.EXTRA_TASK_TEXT) ?: ""
+        targetLineIndex = intent.getIntExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, -1)
+        val initialText = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT) ?: ""
 
         setupUI(initialText)
         setupListeners()
@@ -151,11 +151,11 @@ class QuickAddActivity : AppCompatActivity() {
 
     private fun refreshWidgetAndSync() {
         val appWidgetManager = AppWidgetManager.getInstance(this)
-        val componentName = ComponentName(this, LiquidTodoWidgetProvider::class.java)
+        val componentName = ComponentName(this, ObsidianTasksWidgetProvider::class.java)
         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
         for (id in widgetIds) {
-            LiquidTodoWidgetProvider.updateAppWidget(this, appWidgetManager, id)
+            ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, id)
         }
 
         if (prefs.isCloudSyncEnabled) {

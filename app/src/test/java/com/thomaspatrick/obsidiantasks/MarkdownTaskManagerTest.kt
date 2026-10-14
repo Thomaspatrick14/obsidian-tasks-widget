@@ -1,6 +1,6 @@
-package com.glassvault.widget
+package com.thomaspatrick.obsidiantasks
 
-import com.glassvault.widget.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

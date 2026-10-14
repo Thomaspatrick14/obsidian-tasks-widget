@@ -1,4 +1,4 @@
-package com.glassvault.widget.sync
+package com.thomaspatrick.obsidiantasks.sync
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -7,10 +7,10 @@ import android.net.Uri
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.glassvault.widget.LiquidTodoWidgetProvider
-import com.glassvault.widget.R
-import com.glassvault.widget.data.AppPreferences
-import com.glassvault.widget.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.ObsidianTasksWidgetProvider
+import com.thomaspatrick.obsidiantasks.R
+import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -103,7 +103,7 @@ class NextcloudWebDavSyncWorker(
 
     private fun notifyWidgetUpdated() {
         val appWidgetManager = AppWidgetManager.getInstance(applicationContext)
-        val componentName = ComponentName(applicationContext, LiquidTodoWidgetProvider::class.java)
+        val componentName = ComponentName(applicationContext, ObsidianTasksWidgetProvider::class.java)
         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
         appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
     }

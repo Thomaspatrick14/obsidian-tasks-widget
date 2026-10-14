@@ -1,6 +1,5 @@
 <resources>
     <!-- Clean Minimalist Dark Theme Colors -->
-    <color name="glass_dark_bg">#121214</color>
     <color name="dark_bg">#121214</color>
     <color name="dark_surface">#18181B</color>
     <color name="dark_surface_elevated">#202024</color>

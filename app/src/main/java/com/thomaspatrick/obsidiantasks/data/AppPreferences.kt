@@ -1,4 +1,4 @@
-package com.glassvault.widget.data
+package com.thomaspatrick.obsidiantasks.data
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -58,7 +58,7 @@ class AppPreferences(context: Context) {
         set(value) = prefs.edit().putString(KEY_LAST_ETAG, value).apply()
 
     companion object {
-        private const val PREFS_NAME = "glass_tasks_prefs"
+        private const val PREFS_NAME = "obsidian_tasks_prefs"
         private const val KEY_FILE_URI = "key_file_uri"
         private const val KEY_FILE_NAME = "key_file_name"
         private const val KEY_SHOW_COMPLETED = "key_show_completed"

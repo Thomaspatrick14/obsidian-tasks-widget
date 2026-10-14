@@ -1,6 +1,6 @@
 <resources>
     <!-- Base Application Theme -->
-    <style name="Theme.LiquidGlass" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.ObsidianTasks" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:windowBackground">@color/dark_bg</item>
         <item name="colorPrimary">@color/accent_blue</item>
         <item name="colorSecondary">@color/accent_cyan</item>
@@ -12,7 +12,7 @@
     </style>
 
     <!-- Fullscreen Scrim Modal Theme for Task Dialog -->
-    <style name="Theme.LiquidGlass.Dialog" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Theme.ObsidianTasks.Dialog" parent="Theme.Material3.Dark.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowIsTranslucent">true</item>
