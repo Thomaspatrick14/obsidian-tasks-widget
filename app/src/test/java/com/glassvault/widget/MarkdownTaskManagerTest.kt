@@ -111,14 +111,14 @@ class MarkdownTaskManagerTest {
         )
 
         val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
-        // Should be placed right after "- [ ] Bread" (index 2 + 1 = 3)
-        assertEquals(3, insertIndex)
+        // New tasks should be placed at the VERY TOP of the active tasks (index 2, above "- [ ] Bread")
+        assertEquals(2, insertIndex)
 
         val updated = lines.toMutableList()
         updated.add(insertIndex, "- [ ] Chicken 250gms")
 
-        assertEquals("- [ ] Bread", updated[2])
-        assertEquals("- [ ] Chicken 250gms", updated[3])
+        assertEquals("- [ ] Chicken 250gms", updated[2])
+        assertEquals("- [ ] Bread", updated[3])
         assertEquals("", updated[4])
         assertEquals("DONE", updated[5])
     }
@@ -134,8 +134,8 @@ class MarkdownTaskManagerTest {
         )
 
         val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
-        // Should be placed at index 1 (under "To do", before the blank line and DONE)
-        assertEquals(1, insertIndex)
+        // Should be placed after the blank line under "To do" (index 2)
+        assertEquals(2, insertIndex)
     }
 
     @Test
@@ -150,8 +150,8 @@ class MarkdownTaskManagerTest {
         )
 
         val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
-        // Should be right after Item B (index 2 + 1 = 3)
-        assertEquals(3, insertIndex)
+        // Should be at the very top of active tasks, before Item A (index 1)
+        assertEquals(1, insertIndex)
     }
 
     @Test
@@ -163,8 +163,25 @@ class MarkdownTaskManagerTest {
         )
 
         val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
-        // Should be right after "- [ ] First active" (index 0 + 1 = 1)
-        assertEquals(1, insertIndex)
+        // Should be at the very top of active tasks (index 0)
+        assertEquals(0, insertIndex)
+    }
+
+    @Test
+    fun testInsertionWithFrontmatter() {
+        val lines = listOf(
+            "---",
+            "title: My Note",
+            "---",
+            "",
+            "To do",
+            "",
+            "- [ ] Bread"
+        )
+
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        // Should be at index 6 (above "- [ ] Bread")
+        assertEquals(6, insertIndex)
     }
 
     @Test

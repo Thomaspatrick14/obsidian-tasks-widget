@@ -57,117 +57,97 @@ object MarkdownTaskManager {
 
     /**
      * Determines the optimal zero-based line index where a new uncompleted task should be inserted.
+     * New tasks are placed at the VERY TOP of the active/uncompleted tasks list.
      */
     fun findInsertionIndex(lines: List<String>): Int {
         if (lines.isEmpty()) return 0
 
-        // 1. Check for DONE / Completed / Archive header
-        val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
-
-        if (doneHeaderIndex != -1) {
-            // Find last uncompleted task before the DONE header
-            val lastActiveBeforeDone = (doneHeaderIndex - 1 downTo 0).firstOrNull { idx ->
-                val match = TASK_PATTERN.matchEntire(lines[idx])
-                match != null && match.groupValues[3] == " "
-            }
-
-            if (lastActiveBeforeDone != null) {
-                var insertAt = lastActiveBeforeDone + 1
-                while (insertAt < doneHeaderIndex && isIndentedSubLine(lines[insertAt])) {
-                    insertAt++
+        // Skip YAML frontmatter if present (--- ... ---)
+        var startIndex = 0
+        if (lines[0].trim() == "---") {
+            for (i in 1 until lines.size) {
+                if (lines[i].trim() == "---") {
+                    startIndex = i + 1
+                    break
                 }
-                return insertAt
             }
-
-            // No active task before DONE. Check if there's a TODO header before DONE.
-            val todoHeaderIndex = (0 until doneHeaderIndex).firstOrNull { isTodoHeader(lines[it]) }
-            if (todoHeaderIndex != null) {
-                val insertAt = todoHeaderIndex + 1
-                if (insertAt < doneHeaderIndex && lines[insertAt].isBlank()) {
-                    return insertAt
-                }
-                return insertAt
-            }
-
-            // Otherwise, insert before any blank lines immediately preceding the DONE header
-            var blankStart = doneHeaderIndex
-            while (blankStart > 0 && lines[blankStart - 1].isBlank()) {
-                blankStart--
-            }
-            return blankStart
         }
 
-        // 2. No DONE header. Check for TODO header
-        val todoHeaderIndex = lines.indexOfFirst { isTodoHeader(it) }
-        if (todoHeaderIndex != -1) {
+        // 1. Check for a TODO / Tasks header
+        val todoHeaderIndex = (startIndex until lines.size).firstOrNull { isTodoHeader(lines[it]) }
+
+        if (todoHeaderIndex != null) {
+            // Find where this todo section ends (next header or DONE header or EOF)
             var sectionEnd = lines.size
             for (i in (todoHeaderIndex + 1) until lines.size) {
-                val trimmed = lines[i].trim()
+                val line = lines[i]
+                if (isDoneHeader(line)) {
+                    sectionEnd = i
+                    break
+                }
+                val trimmed = line.trim()
                 if (trimmed.startsWith("#") && !TASK_PATTERN.matches(trimmed)) {
                     sectionEnd = i
                     break
                 }
             }
 
-            val lastActiveInSection = (sectionEnd - 1 downTo todoHeaderIndex + 1).firstOrNull { idx ->
+            // Find the FIRST uncompleted task in this section
+            val firstActiveInSection = (todoHeaderIndex + 1 until sectionEnd).firstOrNull { idx ->
                 val match = TASK_PATTERN.matchEntire(lines[idx])
                 match != null && match.groupValues[3] == " "
             }
 
-            if (lastActiveInSection != null) {
-                var insertAt = lastActiveInSection + 1
-                while (insertAt < sectionEnd && isIndentedSubLine(lines[insertAt])) {
-                    insertAt++
-                }
-                return insertAt
+            if (firstActiveInSection != null) {
+                // Insert at the very top of the active tasks!
+                return firstActiveInSection
             }
 
-            val insertAt = todoHeaderIndex + 1
+            // If no active tasks exist yet, place right after the TODO header (skipping one blank line if present)
+            var insertAt = todoHeaderIndex + 1
             if (insertAt < sectionEnd && lines[insertAt].isBlank()) {
-                return insertAt
-            }
-            return insertAt
-        }
-
-        // 3. No headers. Check if there are completed tasks
-        val firstCompletedIndex = lines.indexOfFirst { line ->
-            val match = TASK_PATTERN.matchEntire(line)
-            match != null && match.groupValues[3].equals("x", ignoreCase = true)
-        }
-
-        if (firstCompletedIndex != -1) {
-            val lastActiveBeforeCompleted = (firstCompletedIndex - 1 downTo 0).firstOrNull { idx ->
-                val match = TASK_PATTERN.matchEntire(lines[idx])
-                match != null && match.groupValues[3] == " "
-            }
-
-            if (lastActiveBeforeCompleted != null) {
-                var insertAt = lastActiveBeforeCompleted + 1
-                while (insertAt < firstCompletedIndex && isIndentedSubLine(lines[insertAt])) {
-                    insertAt++
-                }
-                return insertAt
-            }
-
-            return firstCompletedIndex
-        }
-
-        // 4. Find last active task anywhere
-        val lastActiveIndex = lines.indexOfLast { line ->
-            val match = TASK_PATTERN.matchEntire(line)
-            match != null && match.groupValues[3] == " "
-        }
-
-        if (lastActiveIndex != -1) {
-            var insertAt = lastActiveIndex + 1
-            while (insertAt < lines.size && isIndentedSubLine(lines[insertAt])) {
                 insertAt++
             }
             return insertAt
         }
 
-        // 5. Default fallback: end of file
-        return lines.size
+        // 2. No TODO header. Check if there is an existing active task anywhere after startIndex
+        val firstActiveIndex = (startIndex until lines.size).firstOrNull { idx ->
+            val match = TASK_PATTERN.matchEntire(lines[idx])
+            match != null && match.groupValues[3] == " "
+        }
+
+        if (firstActiveIndex != null) {
+            // Insert at the very top of the active tasks!
+            return firstActiveIndex
+        }
+
+        // 3. No active tasks found. Check if a DONE header exists
+        val doneHeaderIndex = (startIndex until lines.size).firstOrNull { isDoneHeader(lines[it]) }
+        if (doneHeaderIndex != null) {
+            var insertAt = doneHeaderIndex
+            while (insertAt > startIndex && lines[insertAt - 1].isBlank()) {
+                insertAt--
+            }
+            return insertAt
+        }
+
+        // 4. Check if there are completed tasks
+        val firstCompletedIndex = (startIndex until lines.size).firstOrNull { idx ->
+            val match = TASK_PATTERN.matchEntire(lines[idx])
+            match != null && match.groupValues[3].equals("x", ignoreCase = true)
+        }
+
+        if (firstCompletedIndex != null) {
+            return firstCompletedIndex
+        }
+
+        // 5. Default fallback: insert at startIndex (top of document below frontmatter)
+        var insertAt = startIndex
+        while (insertAt < lines.size && lines[insertAt].isBlank()) {
+            insertAt++
+        }
+        return insertAt
     }
 
     /**
