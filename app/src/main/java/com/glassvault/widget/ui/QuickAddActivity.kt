@@ -47,7 +47,7 @@ class QuickAddActivity : AppCompatActivity() {
     private fun setupUI(initialText: String) {
         // Tapping on the translucent scrim outside the dialog dismisses it
         binding.dialogScrimRoot.setOnClickListener {
-            finish()
+            dismissAndFinish()
         }
 
         if (mode == MODE_EDIT) {
@@ -65,7 +65,7 @@ class QuickAddActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         binding.btnCancelAdd.setOnClickListener {
-            finish()
+            dismissAndFinish()
         }
 
         binding.btnDeleteTask.setOnClickListener {
@@ -104,7 +104,7 @@ class QuickAddActivity : AppCompatActivity() {
         val uriString = prefs.fileUriString
         if (uriString.isNullOrEmpty()) {
             Toast.makeText(this, "No Obsidian note configured.", Toast.LENGTH_LONG).show()
-            finish()
+            dismissAndFinish()
             return
         }
 
@@ -123,7 +123,7 @@ class QuickAddActivity : AppCompatActivity() {
             Toast.makeText(this, "Failed to update note", Toast.LENGTH_SHORT).show()
         }
 
-        finish()
+        dismissAndFinish()
     }
 
     private fun deleteTaskAndFinish() {
@@ -137,7 +137,16 @@ class QuickAddActivity : AppCompatActivity() {
         } else {
             Toast.makeText(this, "Failed to delete task", Toast.LENGTH_SHORT).show()
         }
-        finish()
+        dismissAndFinish()
+    }
+
+    private fun dismissAndFinish() {
+        finishAndRemoveTask()
+    }
+
+    override fun finish() {
+        super.finish()
+        finishAndRemoveTask()
     }
 
     private fun refreshWidgetAndSync() {

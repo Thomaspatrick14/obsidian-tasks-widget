@@ -60,7 +60,12 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         putExtra(LiquidTodoWidgetProvider.EXTRA_LINE_INDEX, lineIndex)
                         putExtra(LiquidTodoWidgetProvider.EXTRA_TASK_TEXT, taskText)
                         putExtra(LiquidTodoWidgetProvider.EXTRA_WIDGET_ID, widgetId)
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                            Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                            Intent.FLAG_ACTIVITY_NO_HISTORY
+                        )
                     }
                     context.startActivity(editIntent)
                     return

@@ -94,7 +94,9 @@ class LiquidTodoWidgetProvider : AppWidgetProvider() {
             // Title Click -> Open Settings / Config
             val configIntent = Intent(context, WidgetConfigActivity::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
             }
             val configPendingIntent = PendingIntent.getActivity(
                 context,
@@ -106,7 +108,10 @@ class LiquidTodoWidgetProvider : AppWidgetProvider() {
 
             // Quick Add Button -> Open Floating Dialog
             val addIntent = Intent(context, QuickAddActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS or
+                        Intent.FLAG_ACTIVITY_NO_HISTORY
             }
             val addPendingIntent = PendingIntent.getActivity(
                 context,
@@ -132,7 +137,9 @@ class LiquidTodoWidgetProvider : AppWidgetProvider() {
             // Settings Button -> Open Settings / Config
             val settingsIntent = Intent(context, WidgetConfigActivity::class.java).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                        Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                        Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
             }
             val settingsPendingIntent = PendingIntent.getActivity(
                 context,

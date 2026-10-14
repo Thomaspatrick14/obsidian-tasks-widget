@@ -17,6 +17,9 @@
         <activity
             android:name=".ui.WidgetConfigActivity"
             android:exported="true"
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
+            android:taskAffinity=""
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.LiquidGlass">
             <intent-filter>
@@ -28,6 +31,10 @@
         <activity
             android:name=".ui.QuickAddActivity"
             android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:autoRemoveFromRecents="true"
+            android:taskAffinity=""
             android:theme="@style/Theme.LiquidGlass.Dialog"
             android:windowSoftInputMode="stateVisible|adjustResize" />
 

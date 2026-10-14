@@ -13,11 +13,162 @@ object MarkdownTaskManager {
 
     // Matches markdown checkbox lists:
     // Group 1: Leading indentation
-    // Group 2: Bullet marker (- or * or + or 1.)
+    // Group 2: Bullet marker (- or * or + or 1., optional)
     // Group 3: Checkbox mark (' ' or 'x' or 'X')
     // Group 4: Task description content
-    private val TASK_PATTERN = Regex("""^(\s*)([-*+]|\d+\.)\s+\[([ xX])\]\s*(.*)$""")
-    private val TAG_PATTERN = Regex("""#([a-zA-Z0-9_\-]+)""")
+    val TASK_PATTERN = Regex("""^(\s*)(?:([-*+]|\d+\.)\s+)?\[([ xX])\]\s*(.*)$""")
+    val TAG_PATTERN = Regex("""#([a-zA-Z0-9_\-]+)""")
+
+    val DONE_HEADER_PATTERN = Regex("""(?i)^\s*(?:#{1,6}\s+|\*{2}|_{2})?\s*(done|completed|finished|archive|archived)\b.*$""")
+    val TODO_HEADER_PATTERN = Regex("""(?i)^\s*(?:#{1,6}\s+|\*{2}|_{2})?\s*(to[\s\-]?do|tasks|pending|active)\b.*$""")
+
+    fun isDoneHeader(line: String): Boolean {
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return false
+        if (TASK_PATTERN.matches(line)) return false
+        return DONE_HEADER_PATTERN.matches(trimmed)
+    }
+
+    fun isTodoHeader(line: String): Boolean {
+        val trimmed = line.trim()
+        if (trimmed.isEmpty()) return false
+        if (TASK_PATTERN.matches(line)) return false
+        return TODO_HEADER_PATTERN.matches(trimmed)
+    }
+
+    fun isIndentedSubLine(line: String): Boolean {
+        if (line.isBlank()) return false
+        if (TASK_PATTERN.matches(line)) return false
+        val trimmed = line.trim()
+        if (trimmed.startsWith("#")) return false
+        return line.startsWith("  ") || line.startsWith("\t")
+    }
+
+    fun detectBulletStyle(lines: List<String>): String {
+        for (line in lines) {
+            val match = TASK_PATTERN.matchEntire(line)
+            if (match != null) {
+                val b = match.groupValues[2]
+                if (b.isNotEmpty()) return b
+            }
+        }
+        return "-"
+    }
+
+    /**
+     * Determines the optimal zero-based line index where a new uncompleted task should be inserted.
+     */
+    fun findInsertionIndex(lines: List<String>): Int {
+        if (lines.isEmpty()) return 0
+
+        // 1. Check for DONE / Completed / Archive header
+        val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
+
+        if (doneHeaderIndex != -1) {
+            // Find last uncompleted task before the DONE header
+            val lastActiveBeforeDone = (doneHeaderIndex - 1 downTo 0).firstOrNull { idx ->
+                val match = TASK_PATTERN.matchEntire(lines[idx])
+                match != null && match.groupValues[3] == " "
+            }
+
+            if (lastActiveBeforeDone != null) {
+                var insertAt = lastActiveBeforeDone + 1
+                while (insertAt < doneHeaderIndex && isIndentedSubLine(lines[insertAt])) {
+                    insertAt++
+                }
+                return insertAt
+            }
+
+            // No active task before DONE. Check if there's a TODO header before DONE.
+            val todoHeaderIndex = (0 until doneHeaderIndex).firstOrNull { isTodoHeader(lines[it]) }
+            if (todoHeaderIndex != null) {
+                val insertAt = todoHeaderIndex + 1
+                if (insertAt < doneHeaderIndex && lines[insertAt].isBlank()) {
+                    return insertAt
+                }
+                return insertAt
+            }
+
+            // Otherwise, insert before any blank lines immediately preceding the DONE header
+            var blankStart = doneHeaderIndex
+            while (blankStart > 0 && lines[blankStart - 1].isBlank()) {
+                blankStart--
+            }
+            return blankStart
+        }
+
+        // 2. No DONE header. Check for TODO header
+        val todoHeaderIndex = lines.indexOfFirst { isTodoHeader(it) }
+        if (todoHeaderIndex != -1) {
+            var sectionEnd = lines.size
+            for (i in (todoHeaderIndex + 1) until lines.size) {
+                val trimmed = lines[i].trim()
+                if (trimmed.startsWith("#") && !TASK_PATTERN.matches(trimmed)) {
+                    sectionEnd = i
+                    break
+                }
+            }
+
+            val lastActiveInSection = (sectionEnd - 1 downTo todoHeaderIndex + 1).firstOrNull { idx ->
+                val match = TASK_PATTERN.matchEntire(lines[idx])
+                match != null && match.groupValues[3] == " "
+            }
+
+            if (lastActiveInSection != null) {
+                var insertAt = lastActiveInSection + 1
+                while (insertAt < sectionEnd && isIndentedSubLine(lines[insertAt])) {
+                    insertAt++
+                }
+                return insertAt
+            }
+
+            val insertAt = todoHeaderIndex + 1
+            if (insertAt < sectionEnd && lines[insertAt].isBlank()) {
+                return insertAt
+            }
+            return insertAt
+        }
+
+        // 3. No headers. Check if there are completed tasks
+        val firstCompletedIndex = lines.indexOfFirst { line ->
+            val match = TASK_PATTERN.matchEntire(line)
+            match != null && match.groupValues[3].equals("x", ignoreCase = true)
+        }
+
+        if (firstCompletedIndex != -1) {
+            val lastActiveBeforeCompleted = (firstCompletedIndex - 1 downTo 0).firstOrNull { idx ->
+                val match = TASK_PATTERN.matchEntire(lines[idx])
+                match != null && match.groupValues[3] == " "
+            }
+
+            if (lastActiveBeforeCompleted != null) {
+                var insertAt = lastActiveBeforeCompleted + 1
+                while (insertAt < firstCompletedIndex && isIndentedSubLine(lines[insertAt])) {
+                    insertAt++
+                }
+                return insertAt
+            }
+
+            return firstCompletedIndex
+        }
+
+        // 4. Find last active task anywhere
+        val lastActiveIndex = lines.indexOfLast { line ->
+            val match = TASK_PATTERN.matchEntire(line)
+            match != null && match.groupValues[3] == " "
+        }
+
+        if (lastActiveIndex != -1) {
+            var insertAt = lastActiveIndex + 1
+            while (insertAt < lines.size && isIndentedSubLine(lines[insertAt])) {
+                insertAt++
+            }
+            return insertAt
+        }
+
+        // 5. Default fallback: end of file
+        return lines.size
+    }
 
     /**
      * Reads and parses all checkbox tasks from the given document Uri.
@@ -97,7 +248,8 @@ object MarkdownTaskManager {
             val content = match.groupValues[4]
 
             val newStatus = if (statusChar.equals("x", ignoreCase = true)) " " else "x"
-            val updatedLine = "$indent$bullet [$newStatus] $content"
+            val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
+            val updatedLine = "$indent$bulletPrefix[$newStatus] $content"
             lines[lineIndex] = updatedLine
 
             return writeLines(context, uri, lines)
@@ -132,7 +284,8 @@ object MarkdownTaskManager {
             val bullet = match.groupValues[2]
             val statusChar = match.groupValues[3]
 
-            val updatedLine = "$indent$bullet [$statusChar] $trimmed"
+            val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
+            val updatedLine = "$indent$bulletPrefix[$statusChar] $trimmed"
             lines[lineIndex] = updatedLine
 
             return writeLines(context, uri, lines)
@@ -166,7 +319,7 @@ object MarkdownTaskManager {
     }
 
     /**
-     * Appends a new to-do checkbox item to the markdown file.
+     * Inserts a new to-do checkbox item into the active task section of the markdown file.
      */
     @Synchronized
     fun addTask(context: Context, uri: Uri, taskTitle: String): Boolean {
@@ -174,11 +327,25 @@ object MarkdownTaskManager {
             val trimmed = taskTitle.trim()
             if (trimmed.isEmpty()) return false
 
-            val existingContent = readRawContent(context, uri) ?: ""
-            val separator = if (existingContent.endsWith("\n") || existingContent.isEmpty()) "" else "\n"
-            val newContent = "$existingContent$separator- [ ] $trimmed\n"
+            val lines = mutableListOf<String>()
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
+                    lines.add(line)
+                }
+            } ?: return false
 
-            return writeRawContent(context, uri, newContent)
+            val insertIndex = findInsertionIndex(lines)
+            val bullet = detectBulletStyle(lines)
+            val newTaskLine = "$bullet [ ] $trimmed"
+
+            lines.add(insertIndex, newTaskLine)
+
+            // If the next line is a DONE header and not separated by a blank line, add a blank line
+            if (insertIndex + 1 < lines.size && isDoneHeader(lines[insertIndex + 1])) {
+                lines.add(insertIndex + 1, "")
+            }
+
+            return writeLines(context, uri, lines)
         } catch (e: Exception) {
             Log.e(TAG, "Error adding task: $taskTitle", e)
             return false
@@ -222,11 +389,9 @@ object MarkdownTaskManager {
         return try {
             context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
                 OutputStreamWriter(outputStream).use { writer ->
-                    for (i in lines.indices) {
-                        writer.write(lines[i])
-                        if (i < lines.size - 1) {
-                            writer.write("\n")
-                        }
+                    for (line in lines) {
+                        writer.write(line)
+                        writer.write("\n")
                     }
                     writer.flush()
                 }

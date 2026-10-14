@@ -1,5 +1,6 @@
 package com.glassvault.widget
 
+import com.glassvault.widget.data.MarkdownTaskManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -7,7 +8,7 @@ import org.junit.Test
 
 class MarkdownTaskManagerTest {
 
-    private val taskRegex = Regex("""^(\s*)([-*+]|\d+\.)\s+\[([ xX])\]\s*(.*)$""")
+    private val taskRegex = MarkdownTaskManager.TASK_PATTERN
 
     @Test
     fun testTaskPatternMatchesStandardCheckbox() {
@@ -56,9 +57,128 @@ class MarkdownTaskManagerTest {
     }
 
     @Test
+    fun testTaskPatternMatchesCheckboxWithoutBullet() {
+        val line = "[ ] Task without bullet"
+        val match = taskRegex.matchEntire(line)
+        assertTrue(match != null)
+        assertEquals("", match!!.groupValues[1])
+        assertEquals("", match.groupValues[2])
+        assertEquals(" ", match.groupValues[3])
+        assertEquals("Task without bullet", match.groupValues[4])
+    }
+
+    @Test
     fun testRegularMarkdownNotMatched() {
         assertFalse(taskRegex.matches("# Heading 1"))
         assertFalse(taskRegex.matches("- Normal bullet without checkbox"))
         assertFalse(taskRegex.matches("Just normal text [link](url)"))
+    }
+
+    @Test
+    fun testIsDoneHeaderDetection() {
+        assertTrue(MarkdownTaskManager.isDoneHeader("DONE"))
+        assertTrue(MarkdownTaskManager.isDoneHeader("## DONE"))
+        assertTrue(MarkdownTaskManager.isDoneHeader("### Completed"))
+        assertTrue(MarkdownTaskManager.isDoneHeader("**DONE**"))
+        assertTrue(MarkdownTaskManager.isDoneHeader("# Archive"))
+        assertTrue(MarkdownTaskManager.isDoneHeader("Finished"))
+
+        assertFalse(MarkdownTaskManager.isDoneHeader("To do"))
+        assertFalse(MarkdownTaskManager.isDoneHeader("- [ ] Done shopping"))
+        assertFalse(MarkdownTaskManager.isDoneHeader("- [x] Done shopping"))
+    }
+
+    @Test
+    fun testInsertionBeforeDoneHeaderWithActiveTasks() {
+        // Simulates user's exact notebook structure:
+        // To do
+        // [blank]
+        // - [ ] Bread
+        // [blank]
+        // DONE
+        // [blank]
+        // - [x] Done 1
+        // - [x] Done 2
+        val lines = listOf(
+            "To do",
+            "",
+            "- [ ] Bread",
+            "",
+            "DONE",
+            "",
+            "- [x] https://some-link",
+            "- [x] Some finished task"
+        )
+
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        // Should be placed right after "- [ ] Bread" (index 2 + 1 = 3)
+        assertEquals(3, insertIndex)
+
+        val updated = lines.toMutableList()
+        updated.add(insertIndex, "- [ ] Chicken 250gms")
+
+        assertEquals("- [ ] Bread", updated[2])
+        assertEquals("- [ ] Chicken 250gms", updated[3])
+        assertEquals("", updated[4])
+        assertEquals("DONE", updated[5])
+    }
+
+    @Test
+    fun testInsertionBeforeDoneHeaderWithNoPriorTasks() {
+        val lines = listOf(
+            "To do",
+            "",
+            "DONE",
+            "",
+            "- [x] Done item"
+        )
+
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        // Should be placed at index 1 (under "To do", before the blank line and DONE)
+        assertEquals(1, insertIndex)
+    }
+
+    @Test
+    fun testInsertionInTodoSectionWithoutDoneHeader() {
+        val lines = listOf(
+            "# Tasks",
+            "- [ ] Item A",
+            "- [ ] Item B",
+            "",
+            "## Notes",
+            "Some reference notes"
+        )
+
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        // Should be right after Item B (index 2 + 1 = 3)
+        assertEquals(3, insertIndex)
+    }
+
+    @Test
+    fun testInsertionBeforeCompletedTasksWithoutHeaders() {
+        val lines = listOf(
+            "- [ ] First active",
+            "- [x] Completed item 1",
+            "- [x] Completed item 2"
+        )
+
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        // Should be right after "- [ ] First active" (index 0 + 1 = 1)
+        assertEquals(1, insertIndex)
+    }
+
+    @Test
+    fun testInsertionInEmptyDocument() {
+        val lines = emptyList<String>()
+        val insertIndex = MarkdownTaskManager.findInsertionIndex(lines)
+        assertEquals(0, insertIndex)
+    }
+
+    @Test
+    fun testDetectBulletStyle() {
+        assertEquals("-", MarkdownTaskManager.detectBulletStyle(listOf("- [ ] Buy milk")))
+        assertEquals("*", MarkdownTaskManager.detectBulletStyle(listOf("* [ ] Buy milk")))
+        assertEquals("+", MarkdownTaskManager.detectBulletStyle(listOf("+ [ ] Buy milk")))
+        assertEquals("-", MarkdownTaskManager.detectBulletStyle(emptyList()))
     }
 }

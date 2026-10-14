@@ -213,4 +213,9 @@ class WidgetConfigActivity : AppCompatActivity() {
         setResult(Activity.RESULT_OK, resultValue)
         finish()
     }
+
+    override fun finish() {
+        super.finish()
+        finishAndRemoveTask()
+    }
 }
