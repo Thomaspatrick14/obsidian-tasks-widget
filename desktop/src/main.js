@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage, screen, safeStorage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, screen, safeStorage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const tasks = require('./tasks');
@@ -8,11 +8,11 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 const userFile = (n) => path.join(app.getPath('userData'), n);
 let config = {
-  filePath: null, bounds: null, alwaysOnTop: false, doneExpanded: false,
+  filePath: null, bounds: null, doneExpanded: false,
   remote: { enabled: false, url: '', user: '', remotePath: '', password: '' },
 };
 let win = null;
-let tray = null;
+let quitting = false;
 let watched = null;
 let store = null;       // RemoteStore when Nextcloud mode is on
 let pollTimer = null;
@@ -70,8 +70,6 @@ function state() {
     mode: store ? 'nextcloud' : 'local',
     filePath: config.filePath,
     remotePath: config.remote.remotePath,
-    alwaysOnTop: config.alwaysOnTop,
-    openAtLogin: app.getLoginItemSettings().openAtLogin,
     doneExpanded: config.doneExpanded,
     tasks: [],
     error: null,
@@ -118,15 +116,13 @@ function createWindow() {
 
   win = new BrowserWindow({
     ...b,
-    minWidth: 280,
+    minWidth: 360,
     minHeight: 200,
     frame: false,
     transparent: true,
     resizable: true,
-    skipTaskbar: true,
-    alwaysOnTop: config.alwaysOnTop,
     show: false,
-    icon: path.join(__dirname, 'icon.png'),
+    title: 'Obsidian Tasks',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false },
   });
   win.loadFile(path.join(__dirname, 'index.html'));
@@ -139,6 +135,15 @@ function createWindow() {
   win.on('focus', () => {
     if (store && Date.now() - lastFocusSync > 10000) { lastFocusSync = Date.now(); sync(); } else push();
   });
+  // Closing quits the app. If changes are still waiting to upload, give the
+  // upload a few seconds first (they are kept on disk either way and go up
+  // the next time the app opens).
+  win.on('close', (e) => {
+    if (quitting || !store || !store.state.ops.length) return;
+    e.preventDefault();
+    quitting = true;
+    Promise.race([sync(), new Promise((r) => setTimeout(r, 5000))]).finally(() => win.destroy());
+  });
   win.webContents.setWindowOpenHandler(({ url }) => { openExternal(url); return { action: 'deny' }; });
 }
 
@@ -148,36 +153,13 @@ function openExternal(url) {
 
 function showWindow() {
   if (!win) return;
+  if (win.isMinimized()) win.restore();
   win.show();
   win.focus();
 }
 
-function createTray() {
-  tray = new Tray(nativeImage.createFromPath(path.join(__dirname, 'icon.png')).resize({ width: 16, height: 16 }));
-  tray.setToolTip('Obsidian Tasks');
-  const menu = () => Menu.buildFromTemplate([
-    { label: 'Show', click: showWindow },
-    { label: 'Hide', click: () => win && win.hide() },
-    { type: 'separator' },
-    { label: 'Always on top', type: 'checkbox', checked: config.alwaysOnTop, click: (i) => setOption('alwaysOnTop', i.checked) },
-    { label: 'Start with Windows', type: 'checkbox', checked: app.getLoginItemSettings().openAtLogin, click: (i) => setOption('openAtLogin', i.checked) },
-    { type: 'separator' },
-    { label: 'Quit', click: () => app.quit() },
-  ]);
-  tray.setContextMenu(menu());
-  tray.on('click', showWindow);
-  tray.on('right-click', () => tray.setContextMenu(menu()));
-}
-
 function setOption(key, value) {
-  if (key === 'alwaysOnTop') {
-    config.alwaysOnTop = !!value;
-    win && win.setAlwaysOnTop(config.alwaysOnTop);
-  } else if (key === 'openAtLogin') {
-    app.setLoginItemSettings({ openAtLogin: !!value });
-  } else if (key === 'doneExpanded') {
-    config.doneExpanded = !!value;
-  }
+  if (key === 'doneExpanded') config.doneExpanded = !!value;
   saveConfig();
   push();
 }
@@ -232,8 +214,8 @@ ipcMain.handle('open-url', (_, url) => openExternal(url));
 ipcMain.handle('open-obsidian', () => {
   if (config.filePath) shell.openExternal(`obsidian://open?path=${encodeURIComponent(config.filePath)}`);
 });
-ipcMain.handle('hide', () => win && win.hide());
-ipcMain.handle('quit', () => app.quit());
+ipcMain.handle('minimize', () => win && win.minimize());
+ipcMain.handle('close', () => win && win.close());
 
 // Nextcloud settings. The password never goes back to the window.
 const remoteView = () => {
@@ -281,10 +263,12 @@ ipcMain.handle('remote-test', async (_, r) => {
 
 app.on('second-instance', showWindow);
 app.whenReady().then(() => {
-  app.setAppUserModelId('com.thomaspatrick.obsidiantasks.desktop');
+  // No custom AppUserModelId: Windows then groups the window with the pinned
+  // exe shortcut, so it opens on the pinned taskbar button.
   loadConfig();
+  // Older builds could register a start-with-Windows entry; this is a normal app now.
+  if (app.getLoginItemSettings().openAtLogin) app.setLoginItemSettings({ openAtLogin: false });
   createWindow();
-  createTray();
   watch();
   setupStore();
 });

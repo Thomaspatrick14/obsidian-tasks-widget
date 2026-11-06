@@ -35,8 +35,8 @@
     overflow: hidden;
   }
   header {
-    display: flex; align-items: center; gap: 10px;
-    padding: 16px 16px 12px 20px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 12px 12px 20px;
     -webkit-app-region: drag;
   }
   h1 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
@@ -46,6 +46,15 @@
     padding: 2px 10px; white-space: nowrap;
   }
   .spacer { flex: 1; }
+  .win-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; flex: none; }
+  .win-btn {
+    -webkit-app-region: no-drag;
+    width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+    background: transparent; border: 0; border-radius: 8px; color: var(--text-2); cursor: pointer;
+  }
+  .win-btn:hover { background: var(--card-hover); color: var(--text); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+  .win-btn svg { width: 15px; height: 15px; }
   .icon-btn {
     -webkit-app-region: no-drag;
     width: 34px; height: 34px; flex: none;
@@ -181,20 +190,19 @@
     <button class="icon-btn" id="settingsBtn" title="Settings">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
     </button>
+    <span class="win-sep"></span>
+    <button class="win-btn" id="minBtn" title="Minimize">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 12h12"/></svg>
+    </button>
+    <button class="win-btn close" id="closeBtn" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>
+    </button>
   </header>
 
   <section class="settings" id="settings">
     <div class="row">
       <div><div class="label">Note</div><div class="path" id="notePath">None selected</div></div>
       <button id="changeNote">Change</button>
-    </div>
-    <div class="row">
-      <div class="label">Always on top</div>
-      <label class="switch"><input type="checkbox" id="optTop"><span></span></label>
-    </div>
-    <div class="row">
-      <div class="label">Start with Windows</div>
-      <label class="switch"><input type="checkbox" id="optLogin"><span></span></label>
     </div>
     <div class="row">
       <div>
@@ -217,8 +225,6 @@
     </div>
     <div class="actions">
       <button id="openObsidian">Open in Obsidian</button>
-      <button id="hideBtn">Hide to tray</button>
-      <button id="quitBtn">Quit</button>
     </div>
   </section>
 
@@ -359,8 +365,6 @@ function render() {
   $('pending').textContent = `${active.length} pending`;
   renderStatus();
   $('notePath').textContent = S.filePath || 'None selected';
-  $('optTop').checked = S.alwaysOnTop;
-  $('optLogin').checked = S.openAtLogin;
 
   const list = $('list');
   // Don't rebuild under the user while they type in the add box.
@@ -476,11 +480,9 @@ $('refreshBtn').onclick = async () => {
 };
 $('settingsBtn').onclick = () => $('settings').classList.toggle('open');
 $('changeNote').onclick = () => window.api.chooseFile();
-$('optTop').onchange = (e) => window.api.setOption('alwaysOnTop', e.target.checked);
-$('optLogin').onchange = (e) => window.api.setOption('openAtLogin', e.target.checked);
 $('openObsidian').onclick = () => window.api.openObsidian();
-$('hideBtn').onclick = () => window.api.hide();
-$('quitBtn').onclick = () => window.api.quit();
+$('minBtn').onclick = () => window.api.minimize();
+$('closeBtn').onclick = () => window.api.close();
 
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && e.key.toLowerCase() === 'n') { e.preventDefault(); $('addBtn').click(); }

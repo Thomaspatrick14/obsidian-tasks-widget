@@ -93,8 +93,8 @@ Developed by **[Thomaspatrick14](https://github.com/Thomaspatrick14)**
 
 The `desktop/` folder has the same widget as a small Windows desktop app (Electron).
 
-- Frameless, rounded, draggable widget that stays off the taskbar. Its position and size are remembered.
-- Tray icon: show/hide, **Always on top**, **Start with Windows**, quit.
+- A normal Windows app: pin it to the taskbar and open it when you need it. It has its own **minimize** (to the taskbar) and **close** buttons, and closing it quits fully. Its position and size are remembered.
+- If changes are still uploading when you close it, it waits up to 5 seconds for them. Anything left over is kept and uploads the next time you open it.
 - Click the circle to check/uncheck. Click the text to edit it inline (Enter saves, Esc cancels). Hover a task and click ✕ to delete it.
 - `+` (or `Ctrl+N`) adds tasks to the top of the list. Markdown links and `[[wikilinks]]` are clickable.
 - **Sync through Nextcloud** (settings ⚙): same conflict-free sync as the Android widget. It writes only the Nextcloud copy, with conditional uploads and a queue of changes. **Import from Remotely Save** copies the WebDAV settings from the vault's Remotely Save plugin. The app password is stored encrypted with Windows DPAPI.

@@ -16,6 +16,6 @@ contextBridge.exposeInMainWorld('api', {
   setOption: (k, v) => ipcRenderer.invoke('set-option', k, v),
   openUrl: (url) => ipcRenderer.invoke('open-url', url),
   openObsidian: () => ipcRenderer.invoke('open-obsidian'),
-  hide: () => ipcRenderer.invoke('hide'),
-  quit: () => ipcRenderer.invoke('quit'),
+  minimize: () => ipcRenderer.invoke('minimize'),
+  close: () => ipcRenderer.invoke('close'),
 });

@@ -8,8 +8,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/",
-    "dist:win": "electron-builder --win dir --x64",
-    "dist:portable": "electron-builder --win portable --x64"
+    "dist:win": "electron-builder --win dir --x64 && node scripts/win-version.js",
+    "dist:portable": "npm run dist:win && electron-builder --win portable --x64 --prepackaged dist/win-unpacked"
   },
   "build": {
     "appId": "com.thomaspatrick.obsidiantasks.desktop",
@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "electron": "33.2.1",
-    "electron-builder": "25.1.8"
+    "electron-builder": "25.1.8",
+    "rcedit": "^4.0.1"
   }
 }
