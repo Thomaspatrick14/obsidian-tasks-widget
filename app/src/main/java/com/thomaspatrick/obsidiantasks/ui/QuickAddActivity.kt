@@ -1,24 +1,15 @@
 package com.thomaspatrick.obsidiantasks.ui
 
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
 import com.thomaspatrick.obsidiantasks.ObsidianTasksWidgetProvider
-import com.thomaspatrick.obsidiantasks.R
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
-import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.databinding.ActivityQuickAddBinding
-import com.thomaspatrick.obsidiantasks.sync.NextcloudWebDavSyncWorker
 
 class QuickAddActivity : AppCompatActivity() {
 
@@ -27,6 +18,7 @@ class QuickAddActivity : AppCompatActivity() {
 
     private var mode = MODE_ADD
     private var targetLineIndex = -1
+    private var originalLine: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +29,7 @@ class QuickAddActivity : AppCompatActivity() {
 
         mode = intent.getStringExtra(EXTRA_MODE) ?: MODE_ADD
         targetLineIndex = intent.getIntExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, -1)
+        originalLine = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_ORIGINAL_LINE)
         val initialText = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT) ?: ""
 
         setupUI(initialText)
@@ -101,18 +94,16 @@ class QuickAddActivity : AppCompatActivity() {
             return
         }
 
-        val uriString = prefs.fileUriString
-        if (uriString.isNullOrEmpty()) {
+        if (prefs.fileUriString.isNullOrEmpty() && !TaskRepository.isRemote(prefs)) {
             Toast.makeText(this, "No Obsidian note configured.", Toast.LENGTH_LONG).show()
             dismissAndFinish()
             return
         }
 
-        val uri = Uri.parse(uriString)
         val success = if (mode == MODE_EDIT) {
-            MarkdownTaskManager.updateTaskTitle(this, uri, targetLineIndex, taskText)
+            TaskRepository.rename(this, targetLineIndex, originalLine, taskText)
         } else {
-            MarkdownTaskManager.addTask(this, uri, taskText)
+            TaskRepository.add(this, taskText)
         }
 
         if (success) {
@@ -120,22 +111,21 @@ class QuickAddActivity : AppCompatActivity() {
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
             refreshWidgetAndSync()
         } else {
-            Toast.makeText(this, "Failed to update note", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Note changed meanwhile. Refreshed, try again.", Toast.LENGTH_SHORT).show()
+            TaskRepository.refreshWidgets(this)
         }
 
         dismissAndFinish()
     }
 
     private fun deleteTaskAndFinish() {
-        val uriString = prefs.fileUriString ?: return
-        val uri = Uri.parse(uriString)
-
-        val success = MarkdownTaskManager.deleteTask(this, uri, targetLineIndex)
+        val success = TaskRepository.delete(this, targetLineIndex, originalLine)
         if (success) {
             Toast.makeText(this, "Task deleted", Toast.LENGTH_SHORT).show()
             refreshWidgetAndSync()
         } else {
-            Toast.makeText(this, "Failed to delete task", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Note changed meanwhile. Refreshed, try again.", Toast.LENGTH_SHORT).show()
+            TaskRepository.refreshWidgets(this)
         }
         dismissAndFinish()
     }
@@ -150,25 +140,8 @@ class QuickAddActivity : AppCompatActivity() {
     }
 
     private fun refreshWidgetAndSync() {
-        val appWidgetManager = AppWidgetManager.getInstance(this)
-        val componentName = ComponentName(this, ObsidianTasksWidgetProvider::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
-        appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
-        for (id in widgetIds) {
-            ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, id)
-        }
-
-        if (prefs.isCloudSyncEnabled) {
-            val syncRequest = OneTimeWorkRequestBuilder<NextcloudWebDavSyncWorker>()
-                .setInputData(workDataOf(NextcloudWebDavSyncWorker.KEY_SYNC_MODE to NextcloudWebDavSyncWorker.MODE_UPLOAD))
-                .build()
-
-            WorkManager.getInstance(this).enqueueUniqueWork(
-                "NEXTCLOUD_PUSH_ON_EDIT",
-                ExistingWorkPolicy.REPLACE,
-                syncRequest
-            )
-        }
+        // Upload (if Nextcloud is on) is already queued by TaskRepository.
+        TaskRepository.refreshWidgets(this)
     }
 
     companion object {

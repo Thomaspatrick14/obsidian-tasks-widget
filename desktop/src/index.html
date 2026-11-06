@@ -1,0 +1,493 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Obsidian Tasks</title>
+<style>
+  :root {
+    --bg: #141417;
+    --card: #1b1b1f;
+    --card-hover: #222227;
+    --border: #2a2a2f;
+    --border-soft: #232328;
+    --text: #f4f4f5;
+    --text-2: #a1a1aa;
+    --muted: #71717a;
+    --accent: #3b82f6;
+    --danger: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: transparent; overflow: hidden; }
+  body {
+    font: 14px/1.35 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    padding: 6px;
+    user-select: none;
+  }
+  .widget {
+    height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.45);
+    overflow: hidden;
+  }
+  header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px 16px 12px 20px;
+    -webkit-app-region: drag;
+  }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; }
+  .pill {
+    font-size: 12.5px; color: var(--text-2);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 2px 10px; white-space: nowrap;
+  }
+  .spacer { flex: 1; }
+  .icon-btn {
+    -webkit-app-region: no-drag;
+    width: 34px; height: 34px; flex: none;
+    display: grid; place-items: center;
+    background: var(--card); border: 1px solid var(--border); border-radius: 50%;
+    color: var(--text); cursor: pointer;
+    transition: background .12s;
+  }
+  .icon-btn:hover { background: var(--card-hover); }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .icon-btn.spin svg { animation: spin .6s linear; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main { flex: 1; overflow-y: auto; padding: 0 14px 14px; }
+  main::-webkit-scrollbar { width: 8px; }
+  main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; border: 2px solid var(--bg); }
+
+  .task {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 11px 12px 11px 14px;
+    margin-bottom: 8px;
+    transition: background .12s;
+  }
+  .task:hover { background: var(--card-hover); }
+  .task.done { background: transparent; border-color: var(--border-soft); }
+  .check {
+    width: 20px; height: 20px; flex: none; border-radius: 50%;
+    border: 2px solid var(--muted); background: transparent; cursor: pointer;
+    display: grid; place-items: center; color: #fff;
+    transition: border-color .12s, background .12s;
+  }
+  .check:hover { border-color: var(--text-2); }
+  .done .check { background: var(--accent); border-color: var(--accent); }
+  .check svg { width: 12px; height: 12px; display: none; }
+  .done .check svg { display: block; }
+  .title { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: text; }
+  .done .title { color: var(--muted); text-decoration: line-through; }
+  .title a { color: #8ab4ff; text-decoration: none; cursor: pointer; }
+  .title a:hover { text-decoration: underline; }
+  .done .title a { color: var(--muted); }
+  .del {
+    opacity: 0; width: 24px; height: 24px; flex: none; border: 0; border-radius: 6px;
+    background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center;
+  }
+  .task:hover .del { opacity: 1; }
+  .del:hover { color: var(--danger); background: rgba(239,68,68,.1); }
+  .del svg { width: 14px; height: 14px; }
+
+  input.edit, input.new {
+    flex: 1; min-width: 0; font: inherit; color: var(--text);
+    background: transparent; border: 0; outline: none;
+  }
+  .task.adding { border-color: var(--accent); }
+
+  .done-toggle {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 8px; color: var(--text-2); cursor: pointer;
+    font-size: 15px; font-weight: 500;
+  }
+  .done-toggle:hover { color: var(--text); }
+  .done-toggle svg { width: 14px; height: 14px; transition: transform .15s; }
+  .done-toggle.open svg { transform: rotate(90deg); }
+  .done-toggle .hint { margin-left: auto; font-size: 12.5px; color: var(--muted); font-weight: 400; }
+
+  .empty { color: var(--muted); text-align: center; padding: 28px 10px; }
+  .empty button, .settings button {
+    margin-top: 12px; font: inherit; color: var(--text);
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 7px 14px; cursor: pointer;
+  }
+  .empty button:hover, .settings button:hover { background: var(--card-hover); }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%);
+    background: #2a1416; color: #fca5a5; border: 1px solid #4c1d1d;
+    padding: 7px 12px; border-radius: 10px; font-size: 12.5px;
+    opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  .settings { padding: 0 20px 18px; display: none; }
+  .settings.open { display: block; }
+  .settings .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border-soft); gap: 12px; }
+  .settings .label { color: var(--text-2); font-size: 13px; }
+  .settings .path { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; margin-top: 2px; }
+  .settings .row button { margin: 0; flex: none; font-size: 13px; padding: 5px 12px; }
+  .settings .actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 14px; }
+  .settings .actions button { margin: 0; font-size: 13px; }
+  .settings { max-height: 75vh; overflow-y: auto; }
+  .nc { display: none; padding: 10px 0 4px; border-bottom: 1px solid var(--border-soft); }
+  .nc.open { display: block; }
+  .nc input {
+    display: block; width: 100%; margin-bottom: 8px; font: inherit; font-size: 13px; color: var(--text);
+    background: var(--card); border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px; outline: none;
+    user-select: text;
+  }
+  .nc input:focus { border-color: var(--accent); }
+  .nc .actions { padding-top: 4px; }
+  .nc-msg { font-size: 12.5px; min-height: 0; color: var(--text-2); }
+  .nc-msg.ok { color: #4ade80; } .nc-msg.err { color: #fca5a5; }
+  .status {
+    padding: 6px 20px 10px; font-size: 12px; color: var(--muted);
+    display: none; align-items: center; gap: 6px;
+  }
+  .status.show { display: flex; }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; flex: none; }
+  .status.busy .dot { background: var(--accent); animation: pulse 1s infinite; }
+  .status.wait .dot { background: #f59e0b; }
+  .status.err .dot { background: var(--danger); }
+  .status.err { color: #fca5a5; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .switch { position: relative; width: 36px; height: 20px; flex: none; cursor: pointer; }
+  .switch input { display: none; }
+  .switch span { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: background .15s; }
+  .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .15s; }
+  .switch input:checked + span { background: var(--accent); }
+  .switch input:checked + span::after { transform: translateX(16px); }
+</style>
+</head>
+<body>
+<div class="widget">
+  <header>
+    <h1 id="heading">To do</h1>
+    <span class="pill" id="pending">0 pending</span>
+    <span class="spacer"></span>
+    <button class="icon-btn" id="addBtn" title="Add task (Ctrl+N)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+    <button class="icon-btn" id="refreshBtn" title="Reload from note">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Settings">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6a.5.5 0 0 0 .1-.6l-2-3.5a.5.5 0 0 0-.6-.2l-2.5 1a7.3 7.3 0 0 0-1.7-1l-.4-2.6a.5.5 0 0 0-.5-.5h-4a.5.5 0 0 0-.5.4l-.4 2.7a7.6 7.6 0 0 0-1.7 1l-2.5-1a.5.5 0 0 0-.6.2l-2 3.5a.5.5 0 0 0 .1.6L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6a.5.5 0 0 0-.1.6l2 3.5c.1.2.4.3.6.2l2.5-1c.5.4 1.1.7 1.7 1l.4 2.6c0 .3.2.5.5.5h4c.3 0 .5-.2.5-.4l.4-2.7a7.6 7.6 0 0 0 1.7-1l2.5 1c.2.1.5 0 .6-.2l2-3.5a.5.5 0 0 0-.1-.6L19.4 13zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg>
+    </button>
+  </header>
+
+  <section class="settings" id="settings">
+    <div class="row">
+      <div><div class="label">Note</div><div class="path" id="notePath">None selected</div></div>
+      <button id="changeNote">Change</button>
+    </div>
+    <div class="row">
+      <div class="label">Always on top</div>
+      <label class="switch"><input type="checkbox" id="optTop"><span></span></label>
+    </div>
+    <div class="row">
+      <div class="label">Start with Windows</div>
+      <label class="switch"><input type="checkbox" id="optLogin"><span></span></label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="label">Sync through Nextcloud</div>
+        <div class="path">Reads and writes the Nextcloud copy only, so it never collides with Remotely Save</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="ncOn"><span></span></label>
+    </div>
+    <div class="nc" id="ncForm">
+      <input id="ncUrl" placeholder="Server URL (https://… or …/remote.php/dav/files/user)" spellcheck="false">
+      <input id="ncUser" placeholder="Username" spellcheck="false">
+      <input id="ncPass" type="password" placeholder="App password">
+      <input id="ncPath" placeholder="Remote path, e.g. JP's Obsidian vault/To do.md" spellcheck="false">
+      <div class="nc-msg" id="ncMsg"></div>
+      <div class="actions">
+        <button id="ncImport" title="Copy the WebDAV settings from the Remotely Save plugin in this vault">Import from Remotely Save</button>
+        <button id="ncTest">Test</button>
+        <button id="ncSave">Save</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="openObsidian">Open in Obsidian</button>
+      <button id="hideBtn">Hide to tray</button>
+      <button id="quitBtn">Quit</button>
+    </div>
+  </section>
+
+  <main id="list"></main>
+  <div class="status" id="status"><span class="dot"></span><span id="statusText"></span></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const ICON_DEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+
+let S = null;
+let editing = null;   // line number of task being edited
+let adding = false;
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+async function act(promise) {
+  const r = await promise;
+  if (r && r.ok === false) toast(r.error);
+  return r;
+}
+
+// Render [label](url), bare URLs and [[wikilinks]] safely as DOM nodes.
+function renderTitle(el, text) {
+  const re = /\[([^\]]+)\]\((\S+?)\)|\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|(https?:\/\/\S+)/g;
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) el.append(text.slice(last, m.index));
+    const a = document.createElement('a');
+    if (m[1]) { a.textContent = m[1]; a.dataset.url = m[2]; }
+    else if (m[3]) { a.textContent = m[4] || m[3]; a.dataset.wiki = m[3]; }
+    else { a.textContent = m[5]; a.dataset.url = m[5]; }
+    el.append(a);
+    last = re.lastIndex;
+  }
+  if (last < text.length) el.append(text.slice(last));
+}
+
+function taskEl(t) {
+  const row = document.createElement('div');
+  row.className = 'task' + (t.done ? ' done' : '');
+  row.style.marginLeft = t.indent * 18 + 'px';
+
+  const check = document.createElement('button');
+  check.className = 'check';
+  check.title = t.done ? 'Mark as not done' : 'Mark as done';
+  check.innerHTML = ICON_CHECK;
+  check.onclick = () => act(window.api.toggle(t.line, t.raw));
+  row.append(check);
+
+  if (editing === t.line) {
+    const input = document.createElement('input');
+    input.className = 'edit';
+    input.value = t.title;
+    let finished = false;
+    const finish = async (save) => {
+      if (finished) return;
+      finished = true;
+      editing = null;
+      const v = input.value.trim();
+      if (save && v && v !== t.title) await act(window.api.rename(t.line, t.raw, v));
+      else render();
+    };
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') finish(true);
+      if (e.key === 'Escape') finish(false);
+    };
+    input.onblur = () => finish(true);
+    row.append(input);
+    setTimeout(() => { input.focus(); input.select(); });
+  } else {
+    const title = document.createElement('div');
+    title.className = 'title';
+    renderTitle(title, t.title);
+    title.title = 'Click to edit';
+    title.onclick = (e) => {
+      const a = e.target.closest('a');
+      if (a) {
+        if (a.dataset.url) window.api.openUrl(a.dataset.url);
+        else if (a.dataset.wiki) window.api.openUrl('obsidian://open?file=' + encodeURIComponent(a.dataset.wiki));
+        return;
+      }
+      editing = t.line;
+      render();
+    };
+    row.append(title);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'del';
+  del.title = 'Delete task';
+  del.innerHTML = ICON_DEL;
+  del.onmousedown = (e) => e.preventDefault();
+  del.onclick = () => { editing = null; act(window.api.remove(t.line, t.raw)); };
+  row.append(del);
+  return row;
+}
+
+function addRow() {
+  const row = document.createElement('div');
+  row.className = 'task adding';
+  const ring = document.createElement('span');
+  ring.className = 'check';
+  ring.style.cursor = 'default';
+  const input = document.createElement('input');
+  input.className = 'new';
+  input.placeholder = 'New task…';
+  input.onkeydown = async (e) => {
+    if (e.key === 'Enter') {
+      const v = input.value.trim();
+      if (!v) return;
+      input.value = '';
+      await act(window.api.add(v));   // stays open for the next one
+    }
+    if (e.key === 'Escape') { adding = false; render(); }
+  };
+  input.onblur = () => { if (!input.value.trim()) { adding = false; render(); } };
+  row.append(ring, input);
+  setTimeout(() => input.focus());
+  return row;
+}
+
+function render() {
+  if (!S) return;
+  const active = S.tasks.filter((t) => !t.done);
+  const done = S.tasks.filter((t) => t.done);
+
+  $('pending').textContent = `${active.length} pending`;
+  renderStatus();
+  $('notePath').textContent = S.filePath || 'None selected';
+  $('optTop').checked = S.alwaysOnTop;
+  $('optLogin').checked = S.openAtLogin;
+
+  const list = $('list');
+  // Don't rebuild under the user while they type in the add box.
+  const typing = adding && document.activeElement && document.activeElement.classList.contains('new');
+  const pendingText = typing ? document.activeElement.value : '';
+  list.replaceChildren();
+
+  if (!S.filePath && S.mode === 'local') {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.innerHTML = 'Pick the Obsidian note that holds your to-dos.<br>';
+    const b = document.createElement('button');
+    b.textContent = 'Choose note…';
+    b.onclick = () => window.api.chooseFile();
+    e.append(b);
+    list.append(e);
+    return;
+  }
+  if (S.error && !S.tasks.length) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = S.error;
+    list.append(e);
+    return;
+  }
+
+  if (adding) {
+    const r = addRow();
+    if (pendingText) r.querySelector('input').value = pendingText;
+    list.append(r);
+  }
+  active.forEach((t) => list.append(taskEl(t)));
+  if (!active.length && !adding) {
+    const e = document.createElement('div');
+    e.className = 'empty';
+    e.textContent = 'All done 🎉';
+    list.append(e);
+  }
+
+  if (done.length) {
+    const tg = document.createElement('div');
+    tg.className = 'done-toggle' + (S.doneExpanded ? ' open' : '');
+    tg.innerHTML = ICON_CHEV + `<span>Done (${done.length})</span><span class="hint">${S.doneExpanded ? 'hide' : 'click to view'}</span>`;
+    tg.onclick = () => window.api.setOption('doneExpanded', !S.doneExpanded);
+    list.append(tg);
+    if (S.doneExpanded) done.forEach((t) => list.append(taskEl(t)));
+  }
+}
+
+function renderStatus() {
+  const el = $('status');
+  const y = S.sync;
+  if (S.mode !== 'nextcloud' || !y) { el.className = 'status'; return; }
+  const time = y.lastSync ? new Date(y.lastSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : null;
+  let cls = '', text;
+  if (y.syncing) { cls = 'busy'; text = y.pending ? `Saving ${y.pending} change${y.pending > 1 ? 's' : ''} to Nextcloud…` : 'Checking Nextcloud…'; }
+  else if (y.error) { cls = 'err'; text = y.error + (y.pending ? ` ${y.pending} change${y.pending > 1 ? 's' : ''} waiting.` : ''); }
+  else if (y.pending) { cls = 'wait'; text = `${y.pending} change${y.pending > 1 ? 's' : ''} waiting to upload`; }
+  else text = time ? `Synced with Nextcloud at ${time}` : 'Nextcloud';
+  el.className = 'status show ' + cls;
+  $('statusText').textContent = text;
+}
+
+// ---- Nextcloud settings ----
+function ncMsg(text, kind = '') { const m = $('ncMsg'); m.textContent = text; m.className = 'nc-msg ' + kind; }
+function ncFill(r) {
+  $('ncOn').checked = r.enabled;
+  $('ncForm').classList.toggle('open', r.enabled);
+  $('ncUrl').value = r.url || '';
+  $('ncUser').value = r.user || '';
+  $('ncPath').value = r.remotePath || '';
+  $('ncPass').value = '';
+  $('ncPass').placeholder = r.hasPassword ? 'App password (saved, leave blank to keep)' : 'App password';
+}
+const ncForm = () => ({
+  enabled: $('ncOn').checked, url: $('ncUrl').value, user: $('ncUser').value,
+  remotePath: $('ncPath').value, password: $('ncPass').value,
+});
+$('ncOn').onchange = async (e) => {
+  $('ncForm').classList.toggle('open', e.target.checked);
+  if (!e.target.checked) { await window.api.remoteSave(ncForm()); ncMsg(''); }
+};
+$('ncImport').onclick = async () => {
+  const r = await window.api.remoteImport();
+  if (!r.ok) return ncMsg(r.error, 'err');
+  ncFill({ ...r, enabled: true });
+  ncMsg('Imported from Remotely Save. Press Test, then Save.', 'ok');
+};
+$('ncTest').onclick = async () => {
+  ncMsg('Testing…');
+  const r = await window.api.remoteTest(ncForm());
+  ncMsg(r.ok ? r.message : r.error, r.ok ? 'ok' : 'err');
+};
+$('ncSave').onclick = async () => {
+  const r = await window.api.remoteSave(ncForm());
+  ncFill(r);
+  ncMsg(r.enabled ? 'Saved. Syncing through Nextcloud.' : 'Saved.', 'ok');
+};
+window.api.remoteGet().then(ncFill);
+
+window.api.onState((s) => {
+  S = s;
+  if (editing !== null && !s.tasks.some((t) => t.line === editing)) editing = null;
+  if (editing === null) render();
+});
+
+$('addBtn').onclick = () => { adding = true; editing = null; render(); };
+$('refreshBtn').onclick = async () => {
+  const b = $('refreshBtn');
+  b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin');
+  S = await window.api.refresh();
+  render();
+};
+$('settingsBtn').onclick = () => $('settings').classList.toggle('open');
+$('changeNote').onclick = () => window.api.chooseFile();
+$('optTop').onchange = (e) => window.api.setOption('alwaysOnTop', e.target.checked);
+$('optLogin').onchange = (e) => window.api.setOption('openAtLogin', e.target.checked);
+$('openObsidian').onclick = () => window.api.openObsidian();
+$('hideBtn').onclick = () => window.api.hide();
+$('quitBtn').onclick = () => window.api.quit();
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === 'n') { e.preventDefault(); $('addBtn').click(); }
+  if (e.key === 'F5') { e.preventDefault(); $('refreshBtn').click(); }
+});
+
+window.api.state().then((s) => { S = s; render(); });
+</script>
+</body>
+</html>

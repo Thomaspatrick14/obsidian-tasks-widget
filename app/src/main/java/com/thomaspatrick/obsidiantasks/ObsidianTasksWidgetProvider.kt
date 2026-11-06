@@ -9,7 +9,7 @@ import android.net.Uri
 import android.view.View
 import android.widget.RemoteViews
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
-import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.ui.QuickAddActivity
 import com.thomaspatrick.obsidiantasks.ui.WidgetConfigActivity
 
@@ -24,6 +24,7 @@ class ObsidianTasksWidgetProvider : AppWidgetProvider() {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
         super.onUpdate(context, appWidgetManager, appWidgetIds)
+        TaskRepository.syncNow(context)   // cheap pull when the launcher asks for a refresh
     }
 
     override fun onDeleted(context: Context, appWidgetIds: IntArray) {
@@ -40,6 +41,7 @@ class ObsidianTasksWidgetProvider : AppWidgetProvider() {
         const val EXTRA_TOGGLE_DONE = "extra_toggle_done"
         const val EXTRA_CLICK_ACTION = "extra_click_action"
         const val EXTRA_TASK_TEXT = "extra_task_text"
+        const val EXTRA_ORIGINAL_LINE = "extra_original_line"
 
         const val CLICK_ACTION_TOGGLE = "action_toggle"
         const val CLICK_ACTION_EDIT = "action_edit"
@@ -57,12 +59,11 @@ class ObsidianTasksWidgetProvider : AppWidgetProvider() {
             val displayName = prefs.fileName.removeSuffix(".md")
             views.setTextViewText(R.id.tv_widget_title, displayName)
 
-            val uriString = prefs.fileUriString
-            if (uriString != null) {
+            if (prefs.fileUriString != null || TaskRepository.isRemote(prefs)) {
                 try {
-                    val tasks = MarkdownTaskManager.loadTasks(context, Uri.parse(uriString))
+                    val tasks = TaskRepository.loadTasks(context)
                     val pendingCount = tasks.count { !it.isCompleted }
-                    views.setTextViewText(R.id.tv_widget_count, "$pendingCount pending")
+                    views.setTextViewText(R.id.tv_widget_count, TaskRepository.statusText(context, pendingCount))
                 } catch (e: Exception) {
                     views.setTextViewText(R.id.tv_widget_count, "Error reading note")
                 }

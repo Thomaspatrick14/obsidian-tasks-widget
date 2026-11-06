@@ -2,6 +2,7 @@ package com.thomaspatrick.obsidiantasks.sync
 
 import android.util.Log
 import okhttp3.Credentials
+import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,12 +27,45 @@ object WebDavClient {
     fun resolveFullWebDavUrl(baseUrl: String, username: String, remotePath: String): String {
         val cleanBase = baseUrl.trim().trimEnd('/')
         val cleanPath = remotePath.trim().trimStart('/')
-
-        // If the user already provided the full URL with remote.php/dav/files
         return if (cleanBase.contains("/remote.php/dav/files/")) {
             "$cleanBase/$cleanPath"
         } else {
             "$cleanBase/remote.php/dav/files/$username/$cleanPath"
+        }
+    }
+
+    /**
+     * Nextcloud's own OC-ETag header survives reverse proxies. The plain ETag
+     * header gets turned into a weak W/"…" tag when a proxy gzips the
+     * response, and a weak tag never matches If-Match (every save would 412).
+     */
+    fun tagOf(headers: Headers): String? =
+        (headers["OC-ETag"] ?: headers["ETag"])?.removePrefix("W/")
+
+    /** Transport bound to one note on one server, used by [RemoteTaskStore]. */
+    fun transport(baseUrl: String, username: String, password: String, remotePath: String): DavTransport {
+        val url = resolveFullWebDavUrl(baseUrl, username, remotePath)
+        val auth = Credentials.basic(username, password)
+        return object : DavTransport {
+            override fun get(ifNoneMatch: String?): DavResponse {
+                val req = Request.Builder().url(url).header("Authorization", auth)
+                    .header("Cache-Control", "no-cache")
+                if (ifNoneMatch != null) req.header("If-None-Match", ifNoneMatch)
+                client.newCall(req.get().build()).execute().use { r ->
+                    val body = if (r.code in 200..299) r.body?.string() else null
+                    return DavResponse(r.code, body, tagOf(r.headers))
+                }
+            }
+
+            override fun put(body: String, ifMatch: String?, create: Boolean): DavResponse {
+                val req = Request.Builder().url(url).header("Authorization", auth)
+                if (ifMatch != null) req.header("If-Match", ifMatch)
+                if (create) req.header("If-None-Match", "*")
+                val rb = body.toRequestBody("text/markdown; charset=utf-8".toMediaType())
+                client.newCall(req.put(rb).build()).execute().use { r ->
+                    return DavResponse(r.code, null, tagOf(r.headers))
+                }
+            }
         }
     }
 
@@ -45,13 +79,9 @@ object WebDavClient {
         remotePath: String
     ): Result<String> {
         return try {
-            val fullUrl = resolveFullWebDavUrl(baseUrl, username, remotePath)
-            val credential = Credentials.basic(username, password)
-
-            // Issue a HEAD request to verify endpoint and authentication
             val request = Request.Builder()
-                .url(fullUrl)
-                .header("Authorization", credential)
+                .url(resolveFullWebDavUrl(baseUrl, username, remotePath))
+                .header("Authorization", Credentials.basic(username, password))
                 .head()
                 .build()
 
@@ -65,76 +95,6 @@ object WebDavClient {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Connection test failed", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Uploads markdown content to Nextcloud WebDAV via HTTP PUT.
-     */
-    fun uploadFile(
-        baseUrl: String,
-        username: String,
-        password: String,
-        remotePath: String,
-        content: String
-    ): Result<String> {
-        return try {
-            val fullUrl = resolveFullWebDavUrl(baseUrl, username, remotePath)
-            val credential = Credentials.basic(username, password)
-            val mediaType = "text/markdown; charset=utf-8".toMediaType()
-            val body = content.toRequestBody(mediaType)
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .header("Authorization", credential)
-                .put(body)
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val etag = response.header("ETag") ?: ""
-                    Log.d(TAG, "Uploaded successfully to $fullUrl (ETag: $etag)")
-                    Result.success(etag)
-                } else {
-                    Result.failure(IOException("Upload failed with HTTP ${response.code}: ${response.message}"))
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Upload failed", e)
-            Result.failure(e)
-        }
-    }
-
-    /**
-     * Downloads markdown content from Nextcloud WebDAV via HTTP GET.
-     */
-    fun downloadFile(
-        baseUrl: String,
-        username: String,
-        password: String,
-        remotePath: String
-    ): Result<String> {
-        return try {
-            val fullUrl = resolveFullWebDavUrl(baseUrl, username, remotePath)
-            val credential = Credentials.basic(username, password)
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .header("Authorization", credential)
-                .get()
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val bodyString = response.body?.string() ?: ""
-                    Result.success(bodyString)
-                } else {
-                    Result.failure(IOException("Download failed with HTTP ${response.code}: ${response.message}"))
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Download failed", e)
             Result.failure(e)
         }
     }

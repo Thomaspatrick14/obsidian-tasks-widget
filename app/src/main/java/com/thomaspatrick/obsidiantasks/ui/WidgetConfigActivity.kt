@@ -2,7 +2,6 @@ package com.thomaspatrick.obsidiantasks.ui
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -12,22 +11,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.lifecycleScope
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.thomaspatrick.obsidiantasks.ObsidianTasksWidgetProvider
 import com.thomaspatrick.obsidiantasks.R
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
 import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.databinding.ActivityConfigBinding
-import com.thomaspatrick.obsidiantasks.sync.NextcloudWebDavSyncWorker
 import com.thomaspatrick.obsidiantasks.sync.WebDavClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.TimeUnit
 
 class WidgetConfigActivity : AppCompatActivity() {
 
@@ -159,49 +152,42 @@ class WidgetConfigActivity : AppCompatActivity() {
     }
 
     private fun saveAndFinish() {
-        if (selectedUri == null && prefs.fileUriString == null) {
+        val cloudOn = binding.switchCloudSync.isChecked
+        if (!cloudOn && selectedUri == null && prefs.fileUriString == null) {
             Toast.makeText(this, "Please select an Obsidian markdown note first", Toast.LENGTH_LONG).show()
             return
         }
 
         prefs.showCompleted = binding.switchShowCompleted.isChecked
-        prefs.isCloudSyncEnabled = binding.switchCloudSync.isChecked
 
-        if (prefs.isCloudSyncEnabled) {
-            prefs.nextcloudUrl = binding.etNextcloudUrl.text.toString().trim()
-            prefs.nextcloudUsername = binding.etNextcloudUser.text.toString().trim()
-            prefs.nextcloudPassword = binding.etNextcloudPass.text.toString().trim()
-            prefs.nextcloudRemotePath = binding.etNextcloudRemotePath.text.toString().trim()
-
-            // Schedule periodic background sync (every 15 min with unmetered or connected network)
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
-            val periodicSyncRequest = PeriodicWorkRequestBuilder<NextcloudWebDavSyncWorker>(
-                15, TimeUnit.MINUTES
-            ).setConstraints(constraints).build()
-
-            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-                "NEXTCLOUD_PERIODIC_SYNC",
-                ExistingPeriodicWorkPolicy.UPDATE,
-                periodicSyncRequest
-            )
-        } else {
-            WorkManager.getInstance(this).cancelUniqueWork("NEXTCLOUD_PERIODIC_SYNC")
+        val url = binding.etNextcloudUrl.text.toString().trim()
+        val user = binding.etNextcloudUser.text.toString().trim()
+        val pass = binding.etNextcloudPass.text.toString().trim()
+        val path = binding.etNextcloudRemotePath.text.toString().trim()
+        if (cloudOn && (url.isEmpty() || user.isEmpty() || pass.isEmpty() || path.isEmpty())) {
+            Toast.makeText(this, "Please fill in all Nextcloud fields", Toast.LENGTH_LONG).show()
+            return
         }
 
-        // Notify AppWidgetManager to update widgets
+        // Different server/note: drop the cached copy and queued changes of the old one.
+        if (cloudOn && (url != prefs.nextcloudUrl || user != prefs.nextcloudUsername || path != prefs.nextcloudRemotePath)) {
+            TaskRepository.resetRemote(this)
+        }
+        prefs.isCloudSyncEnabled = cloudOn
+        if (cloudOn) {
+            prefs.nextcloudUrl = url
+            prefs.nextcloudUsername = user
+            prefs.nextcloudPassword = pass
+            prefs.nextcloudRemotePath = path
+            if (prefs.fileUriString == null) prefs.fileName = path.substringAfterLast('/')
+        }
+
+        // Nextcloud on: 15-min pull + an immediate one. Off: cancel background sync.
+        TaskRepository.schedulePeriodic(this)
+        TaskRepository.syncNow(this)
+        TaskRepository.refreshWidgets(this)
+
         val appWidgetManager = AppWidgetManager.getInstance(this)
-        val componentName = ComponentName(this, ObsidianTasksWidgetProvider::class.java)
-        val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
-        if (widgetIds.isNotEmpty()) {
-            appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
-            for (id in widgetIds) {
-                ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, id)
-            }
-        }
-
         if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
             ObsidianTasksWidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId)
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list_view)
