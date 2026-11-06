@@ -7,11 +7,13 @@ import android.graphics.Color
 import android.net.Uri
 import android.text.SpannableString
 import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.text.style.StrikethroughSpan
 import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownLinks
 import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.data.TaskItem
 
@@ -97,23 +99,38 @@ class ObsidianTasksViewsFactory(
                 views.setViewVisibility(R.id.task_item_container, View.VISIBLE)
                 val task = item.task
 
-                val displayTitle = if (task.indentLevel > 0) {
-                    "  ".repeat(task.indentLevel) + "↳ " + task.title
-                } else {
-                    task.title
-                }
+                // Markdown links show as their label; the ↗ button opens the link.
+                val rendered = MarkdownLinks.render(task.title)
+                val prefix = if (task.indentLevel > 0) "  ".repeat(task.indentLevel) + "↳ " else ""
+                val spannable = SpannableString(prefix + rendered.text)
 
                 if (task.isCompleted) {
                     views.setImageViewResource(R.id.iv_checkbox, R.drawable.ic_checkbox_checked)
-                    val spannable = SpannableString(displayTitle).apply {
-                        setSpan(StrikethroughSpan(), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                    views.setTextViewText(R.id.tv_task_title, spannable)
+                    spannable.setSpan(StrikethroughSpan(), 0, spannable.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     views.setTextColor(R.id.tv_task_title, Color.parseColor("#71717A"))
                 } else {
                     views.setImageViewResource(R.id.iv_checkbox, R.drawable.ic_checkbox_unchecked)
-                    views.setTextViewText(R.id.tv_task_title, displayTitle)
+                    for (r in rendered.linkRanges) {
+                        spannable.setSpan(
+                            ForegroundColorSpan(Color.parseColor("#8AB4FF")),
+                            prefix.length + r.first, prefix.length + r.last + 1,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
                     views.setTextColor(R.id.tv_task_title, Color.parseColor("#F4F4F5"))
+                }
+                views.setTextViewText(R.id.tv_task_title, spannable)
+
+                val url = rendered.firstUrl?.takeIf { MarkdownLinks.isOpenable(it) }
+                if (url != null) {
+                    views.setViewVisibility(R.id.iv_open_link, View.VISIBLE)
+                    views.setOnClickFillInIntent(R.id.iv_open_link, Intent().apply {
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_OPEN_LINK)
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_URL, url)
+                        putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
+                    })
+                } else {
+                    views.setViewVisibility(R.id.iv_open_link, View.GONE)
                 }
 
                 // Tag badge

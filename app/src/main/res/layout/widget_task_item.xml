@@ -40,6 +40,18 @@
             android:textColor="@color/text_primary"
             android:textSize="13sp" />
 
+        <!-- Open link (shown only when the task contains a link) -->
+        <ImageView
+            android:id="@+id/iv_open_link"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="4dp"
+            android:contentDescription="Open link"
+            android:padding="6dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_open_link"
+            android:visibility="gone" />
+
         <!-- Optional Tag -->
         <TextView
             android:id="@+id/tv_task_tag"

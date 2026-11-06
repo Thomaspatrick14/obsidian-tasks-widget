@@ -11,6 +11,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
+import com.thomaspatrick.obsidiantasks.data.MarkdownLinks
 import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.ui.QuickAddActivity
 
@@ -42,6 +43,22 @@ class WidgetActionReceiver : BroadcastReceiver() {
                         val componentName = ComponentName(context, ObsidianTasksWidgetProvider::class.java)
                         val widgetIds = appWidgetManager.getAppWidgetIds(componentName)
                         appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_list_view)
+                    }
+                    return
+                }
+
+                // Tapping the ↗ button opens the task's link (browser, or Obsidian for [[wikilinks]])
+                if (clickAction == ObsidianTasksWidgetProvider.CLICK_ACTION_OPEN_LINK) {
+                    val url = intent.getStringExtra(ObsidianTasksWidgetProvider.EXTRA_URL)
+                    if (url != null && MarkdownLinks.isOpenable(url)) {
+                        try {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (e: Exception) {
+                            Log.w("WidgetActionReceiver", "No app to open $url", e)
+                        }
                     }
                     return
                 }

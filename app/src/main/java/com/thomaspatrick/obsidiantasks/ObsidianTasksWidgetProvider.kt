@@ -42,10 +42,12 @@ class ObsidianTasksWidgetProvider : AppWidgetProvider() {
         const val EXTRA_CLICK_ACTION = "extra_click_action"
         const val EXTRA_TASK_TEXT = "extra_task_text"
         const val EXTRA_ORIGINAL_LINE = "extra_original_line"
+        const val EXTRA_URL = "extra_url"
 
         const val CLICK_ACTION_TOGGLE = "action_toggle"
         const val CLICK_ACTION_EDIT = "action_edit"
         const val CLICK_ACTION_TOGGLE_DONE = "action_toggle_done"
+        const val CLICK_ACTION_OPEN_LINK = "action_open_link"
 
         fun updateAppWidget(
             context: Context,
