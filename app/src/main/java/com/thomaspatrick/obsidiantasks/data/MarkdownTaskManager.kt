@@ -181,239 +181,191 @@ object MarkdownTaskManager {
         return lines.size
     }
 
-    /**
-     * Reads and parses all checkbox tasks from the given document Uri.
-     */
-    fun loadTasks(context: Context, uri: Uri, includeCompleted: Boolean = true): List<TaskItem> {
+    // ------------------------------------------------------------------
+    // Pure line operations. Shared by local-file mode and Nextcloud mode.
+    // Each returns the new list, or null when the change does not apply.
+    // ------------------------------------------------------------------
+
+    fun parseLines(lines: List<String>, includeCompleted: Boolean = true): List<TaskItem> {
         val tasks = mutableListOf<TaskItem>()
-        try {
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).useLines { lines ->
-                    lines.forEachIndexed { index, line ->
-                        val match = TASK_PATTERN.matchEntire(line)
-                        if (match != null) {
-                            val indent = match.groupValues[1]
-                            val statusChar = match.groupValues[3]
-                            val rawContent = match.groupValues[4]
-                            val isCompleted = statusChar.equals("x", ignoreCase = true)
+        lines.forEachIndexed { index, line ->
+            val match = TASK_PATTERN.matchEntire(line) ?: return@forEachIndexed
+            val indent = match.groupValues[1]
+            val rawContent = match.groupValues[4]
+            val isCompleted = match.groupValues[3].equals("x", ignoreCase = true)
+            if (!includeCompleted && isCompleted) return@forEachIndexed
 
-                            if (includeCompleted || !isCompleted) {
-                                // Extract Obsidian tag if present (e.g., #todo, #urgent)
-                                val tagMatch = TAG_PATTERN.find(rawContent)
-                                val tag = tagMatch?.value
+            // Extract Obsidian tag if present (e.g., #todo, #urgent)
+            val tag = TAG_PATTERN.find(rawContent)?.value
+            val cleanTitle = if (tag != null) rawContent.replace(tag, "").trim() else rawContent.trim()
 
-                                val cleanTitle = if (tag != null) {
-                                    rawContent.replace(tag, "").trim()
-                                } else {
-                                    rawContent.trim()
-                                }
-
-                                val indentLevel = (indent.length / 2).coerceAtMost(4)
-
-                                tasks.add(
-                                    TaskItem(
-                                        id = index,
-                                        lineIndex = index,
-                                        originalLine = line,
-                                        title = if (cleanTitle.isNotEmpty()) cleanTitle else rawContent,
-                                        isCompleted = isCompleted,
-                                        indentLevel = indentLevel,
-                                        tag = tag
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error reading markdown tasks from $uri", e)
+            tasks.add(
+                TaskItem(
+                    id = index,
+                    lineIndex = index,
+                    originalLine = line,
+                    title = cleanTitle.ifEmpty { rawContent },
+                    isCompleted = isCompleted,
+                    indentLevel = (indent.length / 2).coerceAtMost(4),
+                    tag = tag
+                )
+            )
         }
         return tasks
     }
 
     /**
-     * Toggles the checkbox on the specified line number in the markdown file.
-     * When checked: moves the task to the top of the checked list (right below DONE).
-     * When unchecked: moves the task to the top of the active tasks (under To do).
+     * Flips the checkbox on [lineIndex].
+     * Checked: moves the task (and its indented sub-lines) to the top of the checked list (right below DONE).
+     * Unchecked: moves it to the top of the active tasks (under To do).
      */
-    @Synchronized
-    fun toggleTask(context: Context, uri: Uri, lineIndex: Int): Boolean {
-        try {
-            val lines = mutableListOf<String>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
-                    lines.add(line)
-                }
-            } ?: return false
+    fun toggleLines(source: List<String>, lineIndex: Int): List<String>? {
+        if (lineIndex < 0 || lineIndex >= source.size) return null
+        val match = TASK_PATTERN.matchEntire(source[lineIndex]) ?: return null
+        val lines = source.toMutableList()
 
-            if (lineIndex < 0 || lineIndex >= lines.size) {
-                Log.w(TAG, "Target lineIndex $lineIndex out of bounds (total lines: ${lines.size})")
-                return false
-            }
+        val indent = match.groupValues[1]
+        val bullet = match.groupValues[2]
+        val isCurrentlyCompleted = match.groupValues[3].equals("x", ignoreCase = true)
+        val content = match.groupValues[4]
+        val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
+        val newStatus = if (isCurrentlyCompleted) " " else "x"
 
-            val targetLine = lines[lineIndex]
-            val match = TASK_PATTERN.matchEntire(targetLine) ?: return false
-
-            val indent = match.groupValues[1]
-            val bullet = match.groupValues[2]
-            val statusChar = match.groupValues[3]
-            val content = match.groupValues[4]
-
-            val isCurrentlyCompleted = statusChar.equals("x", ignoreCase = true)
-            val newStatus = if (isCurrentlyCompleted) " " else "x"
-            val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
-            val updatedLine = "$indent$bulletPrefix[$newStatus] $content"
-
-            // Gather task line and any indented sub-notes
-            val taskBlock = mutableListOf<String>()
-            taskBlock.add(updatedLine)
-            var subScan = lineIndex + 1
-            while (subScan < lines.size && isIndentedSubLine(lines[subScan])) {
-                taskBlock.add(lines[subScan])
-                subScan++
-            }
-
-            // Remove the old task block
-            repeat(taskBlock.size) {
-                lines.removeAt(lineIndex)
-            }
-
-            // Clean up accidental duplicate blank lines caused by removal
-            if (lineIndex > 0 && lineIndex < lines.size && lines[lineIndex - 1].isBlank() && lines[lineIndex].isBlank()) {
-                lines.removeAt(lineIndex)
-            }
-
-            if (!isCurrentlyCompleted) {
-                // Task was checked: move to the top of the checked list (right below DONE)
-                val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
-                if (doneHeaderIndex != -1 && doneHeaderIndex == lines.size - 1) {
-                    // DONE is the very last line; add a blank line after it before inserting
-                    lines.add("")
-                    lines.addAll(taskBlock)
-                } else {
-                    val targetIndex = findCheckedInsertionIndex(lines)
-                    lines.addAll(targetIndex, taskBlock)
-                }
-            } else {
-                // Task was unchecked: move to the top of the active tasks (under To do)
-                val targetIndex = findInsertionIndex(lines)
-                lines.addAll(targetIndex, taskBlock)
-
-                // If placed directly against a DONE header without spacing, insert blank line
-                val afterIndex = targetIndex + taskBlock.size
-                if (afterIndex < lines.size && isDoneHeader(lines[afterIndex])) {
-                    lines.add(afterIndex, "")
-                }
-            }
-
-            return writeLines(context, uri, lines)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error toggling task at line $lineIndex", e)
-            return false
+        val taskBlock = mutableListOf("$indent$bulletPrefix[$newStatus] $content")
+        var subScan = lineIndex + 1
+        while (subScan < lines.size && isIndentedSubLine(lines[subScan])) {
+            taskBlock.add(lines[subScan])
+            subScan++
         }
-    }
+        repeat(taskBlock.size) { lines.removeAt(lineIndex) }
 
-    /**
-     * Updates the text title of an existing task at the specified line number.
-     */
-    @Synchronized
-    fun updateTaskTitle(context: Context, uri: Uri, lineIndex: Int, newTitle: String): Boolean {
-        try {
-            val trimmed = newTitle.trim()
-            if (trimmed.isEmpty()) return false
-
-            val lines = mutableListOf<String>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
-                    lines.add(line)
-                }
-            } ?: return false
-
-            if (lineIndex < 0 || lineIndex >= lines.size) return false
-
-            val targetLine = lines[lineIndex]
-            val match = TASK_PATTERN.matchEntire(targetLine) ?: return false
-
-            val indent = match.groupValues[1]
-            val bullet = match.groupValues[2]
-            val statusChar = match.groupValues[3]
-
-            val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
-            val updatedLine = "$indent$bulletPrefix[$statusChar] $trimmed"
-            lines[lineIndex] = updatedLine
-
-            return writeLines(context, uri, lines)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating task title at line $lineIndex", e)
-            return false
-        }
-    }
-
-    /**
-     * Deletes a task from the markdown file at the specified line number.
-     */
-    @Synchronized
-    fun deleteTask(context: Context, uri: Uri, lineIndex: Int): Boolean {
-        try {
-            val lines = mutableListOf<String>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
-                    lines.add(line)
-                }
-            } ?: return false
-
-            if (lineIndex < 0 || lineIndex >= lines.size) return false
+        // Clean up accidental duplicate blank lines caused by removal
+        if (lineIndex > 0 && lineIndex < lines.size && lines[lineIndex - 1].isBlank() && lines[lineIndex].isBlank()) {
             lines.removeAt(lineIndex)
+        }
 
-            return writeLines(context, uri, lines)
-        } catch (e: Exception) {
-            Log.e(TAG, "Error deleting task at line $lineIndex", e)
-            return false
+        if (!isCurrentlyCompleted) {
+            val doneHeaderIndex = lines.indexOfFirst { isDoneHeader(it) }
+            if (doneHeaderIndex != -1 && doneHeaderIndex == lines.size - 1) {
+                lines.add("")
+                lines.addAll(taskBlock)
+            } else {
+                lines.addAll(findCheckedInsertionIndex(lines), taskBlock)
+            }
+        } else {
+            val targetIndex = findInsertionIndex(lines)
+            lines.addAll(targetIndex, taskBlock)
+            val afterIndex = targetIndex + taskBlock.size
+            if (afterIndex < lines.size && isDoneHeader(lines[afterIndex])) {
+                lines.add(afterIndex, "")
+            }
+        }
+        return lines
+    }
+
+    fun addLines(source: List<String>, taskTitle: String): List<String>? {
+        val trimmed = taskTitle.trim()
+        if (trimmed.isEmpty()) return null
+        val lines = source.toMutableList()
+        val insertIndex = findInsertionIndex(lines)
+        lines.add(insertIndex, "${detectBulletStyle(lines)} [ ] $trimmed")
+        if (insertIndex + 1 < lines.size && isDoneHeader(lines[insertIndex + 1])) {
+            lines.add(insertIndex + 1, "")
+        }
+        return lines
+    }
+
+    fun renameLines(source: List<String>, lineIndex: Int, newTitle: String): List<String>? {
+        val trimmed = newTitle.trim()
+        if (trimmed.isEmpty() || lineIndex < 0 || lineIndex >= source.size) return null
+        val match = TASK_PATTERN.matchEntire(source[lineIndex]) ?: return null
+        val bullet = match.groupValues[2]
+        val bulletPrefix = if (bullet.isNotEmpty()) "$bullet " else ""
+        return source.toMutableList().also {
+            it[lineIndex] = "${match.groupValues[1]}$bulletPrefix[${match.groupValues[3]}] $trimmed"
         }
     }
 
+    fun deleteLines(source: List<String>, lineIndex: Int): List<String>? {
+        if (lineIndex < 0 || lineIndex >= source.size || !TASK_PATTERN.matches(source[lineIndex])) return null
+        return source.toMutableList().also { it.removeAt(lineIndex) }
+    }
+
+    // ------------------------------------------------------------------
+    // Text <-> lines, keeping the file's line endings and trailing newline.
+    // ------------------------------------------------------------------
+
+    data class TextShape(val eol: String, val trailing: Boolean)
+
+    fun splitText(text: String): Pair<List<String>, TextShape> {
+        val eol = if (text.contains("\r\n")) "\r\n" else "\n"
+        val trailing = text.endsWith(eol)
+        if (text.isEmpty()) return emptyList<String>() to TextShape(eol, false)
+        val lines = text.split(Regex("\r?\n")).toMutableList()
+        if (trailing) lines.removeAt(lines.size - 1)
+        return lines to TextShape(eol, trailing)
+    }
+
+    fun joinText(lines: List<String>, shape: TextShape): String {
+        val body = lines.joinToString(shape.eol)
+        return if (shape.trailing || lines.isNotEmpty()) body + shape.eol else body
+    }
+
+    // ------------------------------------------------------------------
+    // Local file (Storage Access Framework) mode. Used only when Nextcloud
+    // sync is OFF. With Nextcloud ON the widget never writes the local file:
+    // Obsidian's own Remotely Save plugin is the only thing that touches it.
+    // ------------------------------------------------------------------
+
+    fun readLines(context: Context, uri: Uri): Pair<List<String>, TextShape>? {
+        val text = readRawContent(context, uri) ?: return null
+        return splitText(text)
+    }
+
+    fun loadTasks(context: Context, uri: Uri, includeCompleted: Boolean = true): List<TaskItem> {
+        val (lines, _) = readLines(context, uri) ?: return emptyList()
+        return parseLines(lines, includeCompleted)
+    }
+
     /**
-     * Inserts a new to-do checkbox item into the active task section of the markdown file.
+     * Applies [op] to the file, but only if the line still reads [expectedLine]
+     * (when given), so a stale widget tap never edits the wrong task.
      */
     @Synchronized
-    fun addTask(context: Context, uri: Uri, taskTitle: String): Boolean {
-        try {
-            val trimmed = taskTitle.trim()
-            if (trimmed.isEmpty()) return false
-
-            val lines = mutableListOf<String>()
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
-                    lines.add(line)
-                }
-            } ?: return false
-
-            val insertIndex = findInsertionIndex(lines)
-            val bullet = detectBulletStyle(lines)
-            val newTaskLine = "$bullet [ ] $trimmed"
-
-            lines.add(insertIndex, newTaskLine)
-
-            // If the next line is a DONE header and not separated by a blank line, add a blank line
-            if (insertIndex + 1 < lines.size && isDoneHeader(lines[insertIndex + 1])) {
-                lines.add(insertIndex + 1, "")
-            }
-
-            return writeLines(context, uri, lines)
+    fun mutateFile(
+        context: Context,
+        uri: Uri,
+        lineIndex: Int,
+        expectedLine: String?,
+        op: (List<String>) -> List<String>?
+    ): Boolean {
+        return try {
+            val (lines, shape) = readLines(context, uri) ?: return false
+            if (expectedLine != null && lines.getOrNull(lineIndex) != expectedLine) return false
+            val updated = op(lines) ?: return false
+            writeRawContent(context, uri, joinText(updated, shape))
         } catch (e: Exception) {
-            Log.e(TAG, "Error adding task: $taskTitle", e)
-            return false
+            Log.e(TAG, "Error editing $uri", e)
+            false
         }
     }
 
-    /**
-     * Reads the entire raw text of the markdown file.
-     */
+    fun toggleTask(context: Context, uri: Uri, lineIndex: Int, expectedLine: String? = null) =
+        mutateFile(context, uri, lineIndex, expectedLine) { toggleLines(it, lineIndex) }
+
+    fun updateTaskTitle(context: Context, uri: Uri, lineIndex: Int, newTitle: String, expectedLine: String? = null) =
+        mutateFile(context, uri, lineIndex, expectedLine) { renameLines(it, lineIndex, newTitle) }
+
+    fun deleteTask(context: Context, uri: Uri, lineIndex: Int, expectedLine: String? = null) =
+        mutateFile(context, uri, lineIndex, expectedLine) { deleteLines(it, lineIndex) }
+
+    fun addTask(context: Context, uri: Uri, taskTitle: String) =
+        mutateFile(context, uri, 0, null) { addLines(it, taskTitle) }
+
     fun readRawContent(context: Context, uri: Uri): String? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                BufferedReader(InputStreamReader(inputStream)).readText()
+                BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8)).readText()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error reading raw content from $uri", e)
@@ -421,39 +373,18 @@ object MarkdownTaskManager {
         }
     }
 
-    /**
-     * Overwrites the markdown file with the provided raw text.
-     */
     @Synchronized
     fun writeRawContent(context: Context, uri: Uri, content: String): Boolean {
         return try {
             context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
-                OutputStreamWriter(outputStream).use { writer ->
+                OutputStreamWriter(outputStream, Charsets.UTF_8).use { writer ->
                     writer.write(content)
                     writer.flush()
                 }
-            }
+            } ?: return false
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error writing raw content to $uri", e)
-            false
-        }
-    }
-
-    private fun writeLines(context: Context, uri: Uri, lines: List<String>): Boolean {
-        return try {
-            context.contentResolver.openOutputStream(uri, "wt")?.use { outputStream ->
-                OutputStreamWriter(outputStream).use { writer ->
-                    for (line in lines) {
-                        writer.write(line)
-                        writer.write("\n")
-                    }
-                    writer.flush()
-                }
-            }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Error writing lines to $uri", e)
             false
         }
     }

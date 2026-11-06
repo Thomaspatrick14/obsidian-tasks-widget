@@ -9,3 +9,7 @@ captures/
 .externalNativeBuild
 .cxx
 *.apk
+
+# Desktop app
+desktop/node_modules/
+desktop/dist/

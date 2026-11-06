@@ -12,7 +12,7 @@ import android.view.View
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import com.thomaspatrick.obsidiantasks.data.AppPreferences
-import com.thomaspatrick.obsidiantasks.data.MarkdownTaskManager
+import com.thomaspatrick.obsidiantasks.data.TaskRepository
 import com.thomaspatrick.obsidiantasks.data.TaskItem
 
 class ObsidianTasksWidgetService : RemoteViewsService() {
@@ -48,14 +48,8 @@ class ObsidianTasksViewsFactory(
     }
 
     private fun loadData() {
-        val uriString = prefs.fileUriString ?: return
         try {
-            val uri = Uri.parse(uriString)
-            val rawTasks = MarkdownTaskManager.loadTasks(
-                context = context,
-                uri = uri,
-                includeCompleted = true
-            )
+            val rawTasks = TaskRepository.loadTasks(context)
 
             val activeTasks = rawTasks.filter { !it.isCompleted }
             val completedTasks = rawTasks.filter { it.isCompleted }
@@ -134,6 +128,7 @@ class ObsidianTasksViewsFactory(
                 val toggleIntent = Intent().apply {
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_TOGGLE)
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_ORIGINAL_LINE, task.originalLine)
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
                 }
                 views.setOnClickFillInIntent(R.id.iv_checkbox, toggleIntent)
@@ -143,6 +138,7 @@ class ObsidianTasksViewsFactory(
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_CLICK_ACTION, ObsidianTasksWidgetProvider.CLICK_ACTION_EDIT)
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_LINE_INDEX, task.lineIndex)
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_TASK_TEXT, task.title)
+                    putExtra(ObsidianTasksWidgetProvider.EXTRA_ORIGINAL_LINE, task.originalLine)
                     putExtra(ObsidianTasksWidgetProvider.EXTRA_WIDGET_ID, appWidgetId)
                 }
                 views.setOnClickFillInIntent(R.id.task_item_container, editIntent)

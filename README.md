@@ -28,9 +28,11 @@ A clean, minimalist dark theme Android widget for your local **Obsidian** markdo
    - Configure anytime directly by tapping the settings gear `⚙` icon on the widget header.
 5. **Clean, Aligned Quick Add & Edit Dialogs**:
    - Tap `+` on the widget to pop up a clean, properly aligned dark dialog with auto-focus keyboard to insert new tasks directly to your Obsidian note.
-6. **Built-in Nextcloud WebDAV Background Sync**:
-   - Solves the limitation where Obsidian mobile plugins cannot run in the background.
-   - Pushes task checkbox changes directly to Nextcloud in the background via Android `WorkManager`.
+6. **Conflict-free Nextcloud sync (works alongside Obsidian's Remotely Save)**:
+   - With Nextcloud on, the widget reads and writes **only the Nextcloud copy** of the note. It never writes the note in your phone's vault, so Remotely Save just sees "changed on the server" and downloads it, with no conflict.
+   - Every upload is conditional (`If-Match` with Nextcloud's `OC-ETag`). If the PC or phone saved in between, Nextcloud refuses the upload. The widget re-downloads, re-applies your change and tries again, so nothing is overwritten.
+   - Changes are queued as operations ("tick *Bread*"), so they survive being offline and `423 Locked` replies, and upload when possible. The header shows `· N to upload` while changes are waiting.
+   - Background pull every 15 minutes, plus one when you tap sync. With Nextcloud off, the widget edits the local note directly, as before.
 
 ---
 
@@ -58,3 +60,22 @@ Or download the APK to your phone and tap to install/update.
 
 ## 👤 Author
 Developed by **[Thomaspatrick14](https://github.com/Thomaspatrick14)**
+
+---
+
+## 🖥️ Desktop App (Windows)
+
+The `desktop/` folder has the same widget as a small Windows desktop app (Electron).
+
+- Frameless, rounded, draggable widget that stays off the taskbar. Its position and size are remembered.
+- Tray icon: show/hide, **Always on top**, **Start with Windows**, quit.
+- Click the circle to check/uncheck. Click the text to edit it inline (Enter saves, Esc cancels). Hover a task and click ✕ to delete it.
+- `+` (or `Ctrl+N`) adds tasks to the top of the list. Markdown links and `[[wikilinks]]` are clickable.
+- **Sync through Nextcloud** (settings ⚙): same conflict-free sync as the Android widget. It writes only the Nextcloud copy, with conditional uploads and a queue of changes. **Import from Remotely Save** copies the WebDAV settings from the vault's Remotely Save plugin. The app password is stored encrypted with Windows DPAPI.
+- Without Nextcloud, it edits the local note directly and reloads when the file changes.
+
+Build from WSL/Linux:
+```bash
+cd desktop && npm install && npm test && npm run dist:win
+```
+Then copy `desktop/dist/win-unpacked/` to e.g. `%LOCALAPPDATA%\Programs\Obsidian Tasks\` and run `Obsidian Tasks.exe`.
